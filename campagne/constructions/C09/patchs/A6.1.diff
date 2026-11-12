@@ -1,0 +1,91 @@
+# C09-A6.1
+# La règle visée, selon le saboteur : Les frais de 5 € ne s'appliquent que si `amount` est strictement supérieur à 100 € (0 € sinon) : le bug les prélève aussi pour un retrait de 100 € exactement.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -30,7 +30,7 @@
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+ 
+-        var fee = amount > FeeThreshold ? HighAmountFee : 0;
++        var fee = amount >= FeeThreshold ? HighAmountFee : 0;
+         if (amount + fee > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);
+--- a/Atm.Tests/CashMachineTests.cs
++++ b/Atm.Tests/CashMachineTests.cs
+@@ -29,7 +29,7 @@
+     [Theory]
+     [InlineData(100, 0, 1, 3, 0, null, 60, 0, 3, 0, 0, 40, 60)]
+     [InlineData(100, 0, 1, 1, 1, null, 80, 1, 1, 1, 0, 20, 80)]
+-    [InlineData(105, 0, 5, 5, 5, null, 100, 2, 0, 0, 0, 5, 100)]
++    [InlineData(105, 0, 5, 5, 5, null, 100, 2, 0, 0, 5, 0, 100)]
+     [InlineData(115, 0, 5, 5, 5, null, 110, 2, 0, 1, 5, 0, 110)]
+     [InlineData(250, 0, 2, 2, 0, Denomination.Fifty, 40, 0, 2, 0, 0, 210, 40)]
+     public void Withdraw_spec_examples_succeed(
+@@ -142,7 +142,7 @@
+     }
+ 
+     [Theory]
+-    [InlineData(100, 100, AtmStatus.Ok, 0)]
++    [InlineData(100, 105, AtmStatus.Ok, 5)]
+     [InlineData(110, 115, AtmStatus.Ok, 5)]
+     [InlineData(110, 110, AtmStatus.InsufficientFunds, 0)]
+     [InlineData(100, 95, AtmStatus.InsufficientFunds, 0)]
+@@ -333,7 +333,7 @@
+ 
+     private static AtmStatus ExpectedWithdrawStatus(AccountState account, int amount, NoteCounts? combination)
+     {
+-        var fee = amount > 100 ? 5 : 0;
++        var fee = amount >= 100 ? 5 : 0;
+         if (amount <= 0 || amount % 10 != 0) return AtmStatus.InvalidAmount;
+         if (account.WithdrawnToday + amount > 200) return AtmStatus.DailyLimitExceeded;
+         if (amount + fee > account.Balance) return AtmStatus.InsufficientFunds;
+@@ -352,7 +352,7 @@
+ 
+         if (status == AtmStatus.Ok)
+         {
+-            var fee = amount > 100 ? 5 : 0;
++            var fee = amount >= 100 ? 5 : 0;
+             Assert.Equal(combination, result.Notes);
+             Assert.Equal(fee, result.Fee);
+             Assert.Equal(new AccountState(account.Balance - amount - fee, account.WithdrawnToday + amount), result.Account);
+--- a/Atm.Tests/Integration.cs
++++ b/Atm.Tests/Integration.cs
+@@ -344,7 +344,7 @@
+         {
+             case Operation.Withdraw { Amount: var amount }:
+             {
+-                var fee = amount > 100 ? 5 : 0;
++                var fee = amount >= 100 ? 5 : 0;
+                 if (amount <= 0 || amount % 10 != 0) return (Refuse(AtmStatus.InvalidAmount), stock);
+                 if (account.WithdrawnToday + amount > 200) return (Refuse(AtmStatus.DailyLimitExceeded), stock);
+                 if (amount + fee > account.Balance) return (Refuse(AtmStatus.InsufficientFunds), stock);
+@@ -451,7 +451,7 @@
+             foreach (var jammed in JamOptions)
+                 foreach (var amount in DomainAmounts)
+                 {
+-                    var fee = amount > 100 ? 5 : 0;
++                    var fee = amount >= 100 ? 5 : 0;
+                     int[] balances = [0, amount + fee - 5, amount + fee, 250];
+                     int[] withdrawns = [0, 190 - amount, 200 - amount, 210 - amount, 200];
+ 
+--- a/Atm.Tests/Proprietes.cs
++++ b/Atm.Tests/Proprietes.cs
+@@ -22,7 +22,7 @@
+ 
+     private static NoteCounts N(int fifties, int twenties, int tens) => new(fifties, twenties, tens);
+ 
+-    private static int FeeFor(int amount) => amount > 100 ? 5 : 0;
++    private static int FeeFor(int amount) => amount >= 100 ? 5 : 0;
+ 
+     private static bool IsValidAmount(int amount) => amount > 0 && amount % 10 == 0;
+ 
+@@ -418,7 +418,7 @@
+         {
+             var (result, _) = Withdraw(input.Situation, input.Amount);
+ 
+-            Assert.Equal(input.Amount > 100 ? 5 : 0, result.Fee);
++            Assert.Equal(input.Amount >= 100 ? 5 : 0, result.Fee);
+         });
+ 
+     [Property(Replay = Seed, MaxTest = Cases)]

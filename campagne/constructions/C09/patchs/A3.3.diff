@@ -1,0 +1,16 @@
+# C09-A3.3
+# La règle visée, selon le saboteur : Le bug viole l'ordre des contrôles du retrait (« Les contrôles se font dans cet ordre. Le premier qui échoue donne le statut ») : quand une cassette est bloquée, le refus `CannotDispense` (n°4) passe avant `InsufficientFunds` (n°3).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -28,6 +28,11 @@
+         if (account.WithdrawnToday + amount > DailyLimit)
+         {
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
++        }
++
++        if (_dispenser.Jammed is not null && FindFewestNotes(amount, Available()) is null)
++        {
++            return Refuse(AtmStatus.CannotDispense, account);
+         }
+ 
+         var fee = amount > FeeThreshold ? HighAmountFee : 0;

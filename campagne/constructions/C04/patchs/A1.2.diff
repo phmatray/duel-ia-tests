@@ -1,0 +1,16 @@
+# C04-A1.2
+# La règle visée, selon le saboteur : Le dépôt n'a que trois refus possibles (aucun billet, cassette bloquée, cassette pleine) et ne dépend pas de `WithdrawnToday` : en dehors de ces trois cas il doit réussir, alors que le bug le refuse avec `DailyLimitExceeded` dès que `WithdrawnToday + valeur du dépôt` dépasse 200.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -66,6 +66,11 @@
+         if (notes.Fifties < 0 || notes.Twenties < 0 || notes.Tens < 0 || notes.Total == 0)
+         {
+             return Refuse(AtmStatus.InvalidAmount, account);
++        }
++
++        if (account.WithdrawnToday + notes.Value > DailyLimit)
++        {
++            return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+ 
+         if (dispenser.Jammed is { } jammed && notes.Of(jammed) > 0)

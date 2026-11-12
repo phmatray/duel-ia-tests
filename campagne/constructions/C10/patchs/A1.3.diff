@@ -1,0 +1,22 @@
+# C10-A1.3
+# La règle visée, selon le saboteur : Un dépôt qui ferait dépasser 5 billets dans une cassette doit être refusé avec `CassetteFull` (contrôle n°3 du dépôt) : le bug oublie la cassette de 50 €, et un dépôt contenant un billet de 50 alors que cette cassette en compte déjà 5 donne `DispenserFault` au lieu de `CassetteFull`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -7,8 +7,6 @@
+     public const int WithdrawalFee = 5;
+     public const int MaxNotesPerPass = 4;
+     public const int CassetteCapacity = 5;
+-
+-    private static readonly Denomination[] Denominations = [Denomination.Fifty, Denomination.Twenty, Denomination.Ten];
+ 
+     public AtmResult Execute(AccountState account, Operation operation) => operation switch
+     {
+@@ -69,7 +67,7 @@
+         }
+ 
+         var after = dispenser.Stock + notes;
+-        if (Denominations.Any(d => after.Of(d) > CassetteCapacity))
++        if (after.Twenties > CassetteCapacity || after.Tens > CassetteCapacity)
+         {
+             return Refuse(AtmStatus.CassetteFull, account);
+         }

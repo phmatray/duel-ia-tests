@@ -1,0 +1,24 @@
+# C05-A2.1
+# La règle visée, selon le saboteur : Les frais de 5 € s'appliquent dès que `amount` est strictement supérieur à 100 € (quel que soit `WithdrawnToday`) : le bug ne les prélève que si `WithdrawnToday` vaut 0, si bien qu'un gros retrait après un premier retrait dans la journée est servi sans frais (et peut même passer avec un solde égal au montant).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -30,7 +30,7 @@
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+ 
+-        var fee = FeeFor(amount);
++        var fee = FeeFor(account, amount);
+         if (amount + fee > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);
+@@ -85,7 +85,9 @@
+         return new AtmResult(AtmStatus.Ok, NoteCounts.None, 0, credited);
+     }
+ 
+-    private static int FeeFor(int amount) => amount > FeeThreshold ? WithdrawalFee : 0;
++    /// <summary>Les frais ne sont prélevés qu'une fois par jour, sur le premier retrait.</summary>
++    private static int FeeFor(AccountState account, int amount) =>
++        account.WithdrawnToday == 0 && amount > FeeThreshold ? WithdrawalFee : 0;
+ 
+     /// <summary>Le stock utilisable : la cassette bloquée compte pour zéro.</summary>
+     private NoteCounts Available()

@@ -1,0 +1,13 @@
+# C05-A1.1
+# La règle visée, selon le saboteur : Le bug viole la règle « Les frais : 5 € si `amount` est strictement supérieur à 100 €, 0 € sinon » : les frais sont calculés sur `amount - WithdrawnToday`, donc un retrait de plus de 100 € fait par un compte qui a déjà retiré ce jour-là peut ne pas être facturé (par exemple solde 250, déjà retiré 50, retrait 120 : `Fee` vaut 0 au lieu de 5 et le solde final est 130 au lieu de 125).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -30,7 +30,7 @@
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+ 
+-        var fee = FeeFor(amount);
++        var fee = FeeFor(amount - account.WithdrawnToday);
+         if (amount + fee > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);

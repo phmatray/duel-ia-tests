@@ -1,0 +1,3 @@
+# C04-A4.3
+# La règle visée, selon le saboteur : Aucun bug introduit : je n'ai trouvé aucune modification honnête de `Atm/CashMachine.cs` qui viole la spec sur une part non négligeable du domaine sans être détectée par la suite actuelle. Le code de production n'a pas été modifié.
+# Aucun changement : le saboteur n'a rien rendu (tentative non conforme).

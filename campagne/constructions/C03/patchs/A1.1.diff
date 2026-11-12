@@ -1,0 +1,22 @@
+# C03-A1.1
+# La règle visée, selon le saboteur : Le bug viole la règle du dépôt « Le succès : statut `Ok`, les billets rejoignent le module, `Balance` augmente de leur valeur » (seuls les trois refus du tableau sont permis) : un dépôt qui porterait le solde au-delà de 250 € (par exemple solde 250, dépôt 10×1, stock vide, aucune cassette bloquée) est refusé en `InvalidAmount` au lieu d'être accepté.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -7,6 +7,7 @@
+     public const int WithdrawalFee = 5;
+     public const int CassetteCapacity = 5;
+     public const int MaxNotesPerPass = 4;
++    public const int MaxBalance = 250;
+ 
+     private readonly IMoneyDispenser _dispenser = dispenser ?? throw new ArgumentNullException(nameof(dispenser));
+ 
+@@ -58,7 +59,8 @@
+ 
+     private AtmResult Deposit(AccountState account, NoteCounts notes)
+     {
+-        if (notes.Total <= 0 || notes.Fifties < 0 || notes.Twenties < 0 || notes.Tens < 0)
++        if (notes.Total <= 0 || notes.Fifties < 0 || notes.Twenties < 0 || notes.Tens < 0
++            || account.Balance + notes.Value > MaxBalance)
+         {
+             return Refuse(AtmStatus.InvalidAmount, account);
+         }

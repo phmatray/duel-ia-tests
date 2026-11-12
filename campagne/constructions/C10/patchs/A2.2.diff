@@ -1,0 +1,14 @@
+# C10-A2.2
+# La règle visée, selon le saboteur : Le bug viole la règle 3 du dépôt : `CassetteFull` ne doit être rendu que si le dépôt « ferait dépasser 5 billets dans une cassette ». Or la machine refuse désormais tout dépôt dès qu'une cassette contient déjà 5 billets, même quand le dépôt ne contient aucun billet de cette coupure (exemple : stock 50×5 20×0 10×0, dépôt 20×1 → `CassetteFull` au lieu de `Ok`).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -68,8 +68,7 @@
+             return Refuse(AtmStatus.CassetteJammed, account);
+         }
+ 
+-        var after = dispenser.Stock + notes;
+-        if (Denominations.Any(d => after.Of(d) > CassetteCapacity))
++        if (Denominations.Any(d => dispenser.Stock.Of(d) >= CassetteCapacity))
+         {
+             return Refuse(AtmStatus.CassetteFull, account);
+         }

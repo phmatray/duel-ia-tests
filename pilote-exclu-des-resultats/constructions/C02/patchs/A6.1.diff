@@ -1,0 +1,89 @@
+# C02-A6.1
+# La règle visée, selon le saboteur : Le bug viole la règle 3 du retrait : le refus `InsufficientFunds` doit être donné quand `amount + frais` dépasse `Balance`, or le contrôle ne compare plus que `amount` au solde, si bien qu'un retrait de plus de 100 € avec `Balance == amount` (ex. solde 110, retrait 110) est accepté et laisse le solde à −5.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -28,7 +28,7 @@
+         }
+ 
+         var fee = amount > FeeThreshold ? WithdrawalFee : 0;
+-        if (amount + fee > account.Balance)
++        if (amount > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);
+         }
+--- a/Atm.Tests/CashMachineTests.cs
++++ b/Atm.Tests/CashMachineTests.cs
+@@ -69,8 +69,8 @@
+     [Fact]
+     public void Example_Withdraw110_FeeMakesFundsInsufficient()
+     {
+-        var result = Withdraw(110, 0, Full, null, 110, out var d);
+-        AssertRefused(result, AtmStatus.InsufficientFunds, new AccountState(110, 0), d, Full);
++        var result = Withdraw(105, 0, Full, null, 110, out var d);
++        AssertRefused(result, AtmStatus.InsufficientFunds, new AccountState(105, 0), d, Full);
+     }
+ 
+     [Fact]
+--- a/Atm.Tests/Integration.cs
++++ b/Atm.Tests/Integration.cs
+@@ -99,7 +99,7 @@
+                 if (amount <= 0 || amount % 10 != 0) return Refuse(AtmStatus.InvalidAmount);
+                 if (account.WithdrawnToday + amount > 200) return Refuse(AtmStatus.DailyLimitExceeded);
+                 var fee = amount > 100 ? 5 : 0;
+-                if (amount + fee > account.Balance) return Refuse(AtmStatus.InsufficientFunds);
++                if (amount > account.Balance) return Refuse(AtmStatus.InsufficientFunds);
+                 if (FewestNotes(amount, stock, jam) is not { } notes) return Refuse(AtmStatus.CannotDispense);
+ 
+                 var after = new AccountState(account.Balance - amount - fee, account.WithdrawnToday + amount);
+@@ -420,7 +420,7 @@
+                 AtmStatus status =
+                     amount <= 0 || amount % 10 != 0 ? AtmStatus.InvalidAmount
+                     : withdrawn + amount > 200 ? AtmStatus.DailyLimitExceeded
+-                    : amount + fee > balance ? AtmStatus.InsufficientFunds
++                    : amount > balance ? AtmStatus.InsufficientFunds
+                     : combination is null ? AtmStatus.CannotDispense
+                     : AtmStatus.Ok;
+ 
+--- a/Atm.Tests/Proprietes.cs
++++ b/Atm.Tests/Proprietes.cs
+@@ -13,9 +13,9 @@
+ {
+     /// <summary>
+     /// Graine fixe. FsCheck 3 attend « graine,gamma » avec un gamma impair : « 42,0 » est rejeté
+-    /// (<c>Gamma must be odd</c>) et fait planter tout le processus de test. On garde donc la graine 42 avec le gamma 1.
++    /// (<c>Gamma must be odd</c>) et fait planter tout le processus de test. On prend donc la graine 43 avec le gamma 1.
+     /// </summary>
+-    private const string Graine = "42,1";
++    private const string Graine = "43,1";
+ 
+     private const int Cas = 200;
+ 
+@@ -161,7 +161,7 @@
+         public static Arbitrary<RetraitSansFonds> RetraitsSansFonds() => Arb.From(
+             from montant in Multiples(10, 10, 200)
+             from retire in Multiples(10, 0, 200 - montant)
+-            from solde in Multiples(5, 0, montant + Frais(montant) - 5)
++            from solde in Multiples(5, 0, montant - 5)
+             from stock in Stock
+             from bloquee in Bloquee
+             select new RetraitSansFonds(new Situation(new AccountState(solde, retire), stock, bloquee), montant));
+--- a/Atm.Tests/Renforts.cs
++++ b/Atm.Tests/Renforts.cs
+@@ -138,7 +138,7 @@
+             AtmStatus? refusal =
+                 amount <= 0 || amount % 10 != 0 ? AtmStatus.InvalidAmount
+                 : withdrawn + amount > 200 ? AtmStatus.DailyLimitExceeded
+-                : amount + fee > balance ? AtmStatus.InsufficientFunds
++                : amount > balance ? AtmStatus.InsufficientFunds
+                 : null; // avec un stock plein, tout montant de 10 à 200 est distribuable
+ 
+             if (refusal is { } status)
+@@ -175,7 +175,7 @@
+     [Fact]
+     public void Withdraw_FeeOnlyMakesFundsInsufficient_ByFiveEuros()
+     {
+-        var account = new AccountState(114, 0);
++        var account = new AccountState(105, 0);
+         var result = Run(account, Full, null, new Operation.Withdraw(110), out var d);
+ 
+         Assert.Equal(new AtmResult(AtmStatus.InsufficientFunds, NoteCounts.None, 0, account), result);

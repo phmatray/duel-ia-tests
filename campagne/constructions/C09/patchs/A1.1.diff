@@ -1,0 +1,16 @@
+# C09-A1.1
+# La règle visée, selon le saboteur : Le retrait doit faire ses contrôles dans l'ordre (`InsufficientFunds` avant `CannotDispense`), or avec une cassette bloquée la machine renvoie `CannotDispense` à la place de `InsufficientFunds` quand le solde ne couvre pas `amount + frais` et que les billets disponibles ne permettent pas non plus de faire le montant.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -28,6 +28,11 @@
+         if (account.WithdrawnToday + amount > DailyLimit)
+         {
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
++        }
++
++        if (_dispenser.Jammed is not null && FindFewestNotes(amount, Available()) is null)
++        {
++            return Refuse(AtmStatus.CannotDispense, account);
+         }
+ 
+         var fee = amount > FeeThreshold ? HighAmountFee : 0;

@@ -1,0 +1,25 @@
+# C04-A5.2
+# La règle visée, selon le saboteur : Pour un dépôt, la spec impose de vérifier la cassette bloquée (CassetteJammed, contrôle n°2) avant la capacité (CassetteFull, contrôle n°3) ; le code inverse ces deux contrôles, si bien qu'un dépôt contenant un billet de la cassette bloquée et faisant déborder une cassette pleine rend CassetteFull au lieu de CassetteJammed.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -68,15 +68,14 @@
+             return Refuse(AtmStatus.InvalidAmount, account);
+         }
+ 
++        if (Denominations.Any(denomination => (dispenser.Stock + notes).Of(denomination) > CassetteCapacity))
++        {
++            return Refuse(AtmStatus.CassetteFull, account);
++        }
++
+         if (dispenser.Jammed is { } jammed && notes.Of(jammed) > 0)
+         {
+             return Refuse(AtmStatus.CassetteJammed, account);
+-        }
+-
+-        var after = dispenser.Stock + notes;
+-        if (Denominations.Any(denomination => after.Of(denomination) > CassetteCapacity))
+-        {
+-            return Refuse(AtmStatus.CassetteFull, account);
+         }
+ 
+         if (!dispenser.Load(notes))

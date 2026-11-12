@@ -1,0 +1,3 @@
+# C02-A4.2
+# La règle visée, selon le saboteur : Aucun bug introduit : les tests d'intégration (`Withdraw_WholeDomain_…` et `Deposit_WholeDomain_…`) parcourent tout le domaine de la spec avec le vrai `MoneyDispenser` et vérifient le résultat complet et le stock, donc tout écart à la spec sur le domaine serait détecté ; le code de `Atm/` n'a pas été modifié.
+# Aucun changement : le saboteur n'a rien rendu (tentative non conforme).

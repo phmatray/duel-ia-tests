@@ -1,0 +1,12 @@
+# C04-A5.1
+# La règle visée, selon le saboteur : Le bug viole la règle « La sortie : les billets sortent en autant de passages que nécessaire, 4 billets au plus par passage » : le découpage oublie de décompter les billets de 20 de la place restante, donc un passage peut contenir plus de 4 billets (ex. 20×4 + 10×1). Le vrai module le refuse, et le retrait finit en `DispenserFault` au lieu de `Ok`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -139,7 +139,6 @@
+             var fifties = Math.Min(room, remaining.Fifties);
+             room -= fifties;
+             var twenties = Math.Min(room, remaining.Twenties);
+-            room -= twenties;
+             var tens = Math.Min(room, remaining.Tens);
+ 
+             var pass = new NoteCounts(fifties, twenties, tens);

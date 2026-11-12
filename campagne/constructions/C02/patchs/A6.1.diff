@@ -1,0 +1,113 @@
+# C02-A6.1
+# La règle visée, selon le saboteur : Les frais de 5 € ne s'appliquent que si le montant retiré est strictement supérieur à 100 € (0 € sinon) : mon bug les prélève aussi pour un retrait d'exactement 100 €.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -30,7 +30,7 @@
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+ 
+-        var fee = amount > FeeThreshold ? WithdrawalFee : 0;
++        var fee = amount >= FeeThreshold ? WithdrawalFee : 0;
+         if (amount + fee > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);
+--- a/Atm.Tests/DomainPropertyTests.cs
++++ b/Atm.Tests/DomainPropertyTests.cs
+@@ -49,7 +49,7 @@
+             var dispenser = new MoneyDispenser(stock, jammed);
+             var result = new CashMachine(dispenser).Execute(account, new Operation.Withdraw(amount));
+ 
+-            var fee = amount > 100 ? 5 : 0;
++            var fee = amount >= 100 ? 5 : 0;
+             AtmStatus expected;
+             NoteCounts? combination = null;
+             if (amount <= 0 || amount % 10 != 0) expected = AtmStatus.InvalidAmount;
+--- a/Atm.Tests/Integration.cs
++++ b/Atm.Tests/Integration.cs
+@@ -61,7 +61,7 @@
+     private static (AtmResult Result, NoteCounts Stock) ExpectedWithdraw(
+         AccountState account, int amount, NoteCounts stock, Denomination? jammed)
+     {
+-        var fee = amount > 100 ? 5 : 0;
++        var fee = amount >= 100 ? 5 : 0;
+         AtmStatus? refusal =
+             amount <= 0 || amount % 10 != 0 ? AtmStatus.InvalidAmount
+             : account.WithdrawnToday + amount > 200 ? AtmStatus.DailyLimitExceeded
+@@ -165,7 +165,7 @@
+ 
+             var result = new CashMachine(dispenser).Execute(account, new Operation.Withdraw(amount));
+ 
+-            var fee = amount > 100 ? 5 : 0;
++            var fee = amount >= 100 ? 5 : 0;
+             AtmResult expected;
+             NoteCounts expectedStock = stock;
+             if (amount <= 0 || amount % 10 != 0) expected = new(AtmStatus.InvalidAmount, default, 0, account);
+@@ -259,7 +259,7 @@
+         var stock = Of(f, t, d);
+         var notes = Of(nf, nt, nd);
+         var dispenser = new MoneyDispenser(stock);
+-        var fee = amount > 100 ? 5 : 0;
++        var fee = amount >= 100 ? 5 : 0;
+ 
+         Step(new CashMachine(dispenser), dispenser, new(250, 0), new Operation.Withdraw(amount),
+             new AtmResult(AtmStatus.Ok, notes, fee, new(250 - amount - fee, amount)), stock - notes);
+--- a/Atm.Tests/Proprietes.cs
++++ b/Atm.Tests/Proprietes.cs
+@@ -81,7 +81,7 @@
+     /// <summary>Montant valide, puis déjà-retiré et solde choisis pour passer le plafond et les fonds.</summary>
+     private static Gen<RetraitPlausible> PlausibleFor(int amount, Module module) =>
+         from withdrawn in Gen.Choose(0, (200 - amount) / 10).Select(i => i * 10)
+-        from balance in Gen.Choose((amount + (amount > 100 ? 5 : 0)) / 5, 50).Select(i => i * 5)
++        from balance in Gen.Choose((amount + (amount >= 100 ? 5 : 0)) / 5, 50).Select(i => i * 5)
+         select new RetraitPlausible(new AccountState(balance, withdrawn), module, amount);
+ 
+     private static Gen<RetraitPlausible> Ordinary =>
+@@ -178,7 +178,7 @@
+ 
+     // ───────────────────────── Outils ─────────────────────────
+ 
+-    private static int FeeFor(int amount) => amount > 100 ? 5 : 0;
++    private static int FeeFor(int amount) => amount >= 100 ? 5 : 0;
+ 
+     private static bool IsValidAmount(int amount) => amount > 0 && amount % 10 == 0;
+ 
+@@ -378,7 +378,7 @@
+     {
+         var (result, _) = Withdraw(r.Account, r.Module, r.Amount);
+ 
+-        Assert.Equal(result.Status == AtmStatus.Ok && r.Amount > 100 ? 5 : 0, result.Fee);
++        Assert.Equal(result.Status == AtmStatus.Ok && r.Amount >= 100 ? 5 : 0, result.Fee);
+     }
+ 
+     /// <summary>
+--- a/Atm.Tests/SpecExamplesTests.cs
++++ b/Atm.Tests/SpecExamplesTests.cs
+@@ -25,11 +25,11 @@
+     }
+ 
+     [Fact]
+-    public void Withdraw100_HasNoFee()
++    public void Withdraw90_HasNoFee()
+     {
+-        var result = new CashMachine(new MoneyDispenser(Of(5, 5, 5))).Execute(new(105, 0), new Operation.Withdraw(100));
++        var result = new CashMachine(new MoneyDispenser(Of(5, 5, 5))).Execute(new(95, 0), new Operation.Withdraw(90));
+ 
+-        Assert.Equal(new AtmResult(AtmStatus.Ok, Of(2, 0, 0), 0, new(5, 100)), result);
++        Assert.Equal(new AtmResult(AtmStatus.Ok, Of(1, 2, 0), 0, new(5, 90)), result);
+     }
+ 
+     [Fact]
+--- a/Atm.Tests/WithdrawTests.cs
++++ b/Atm.Tests/WithdrawTests.cs
+@@ -71,9 +71,9 @@
+     [Fact]
+     public void BalanceExactlyCoveringAmountWithoutFee_IsAllowed()
+     {
+-        var result = Withdraw(100, new(100, 0), Full);
++        var result = Withdraw(90, new(90, 0), Full);
+ 
+-        Assert.Equal(new AtmResult(AtmStatus.Ok, Of(2, 0, 0), 0, new(0, 100)), result);
++        Assert.Equal(new AtmResult(AtmStatus.Ok, Of(1, 2, 0), 0, new(0, 90)), result);
+     }
+ 
+     [Theory]

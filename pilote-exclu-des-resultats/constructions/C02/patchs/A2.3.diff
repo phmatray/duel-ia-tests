@@ -1,0 +1,23 @@
+# C02-A2.3
+# La règle visée, selon le saboteur : Le bug viole le contrôle n°2 du retrait, qui doit passer avant le n°4 : si `WithdrawnToday + amount` dépasse 200, le statut doit être `DailyLimitExceeded`, mais quand aucune combinaison de billets ne fait `amount`, le plafond est comparé à 0 € au lieu de `amount`, et la machine rend alors `CannotDispense` ou `InsufficientFunds`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -22,7 +22,8 @@
+             return Refuse(AtmStatus.InvalidAmount, account);
+         }
+ 
+-        if (account.WithdrawnToday + amount > DailyLimit)
++        var planned = FindCombination(amount, Available());
++        if (account.WithdrawnToday + (planned?.Value ?? 0) > DailyLimit)
+         {
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+@@ -33,7 +34,7 @@
+             return Refuse(AtmStatus.InsufficientFunds, account);
+         }
+ 
+-        if (FindCombination(amount, Available()) is not { } combination)
++        if (planned is not { } combination)
+         {
+             return Refuse(AtmStatus.CannotDispense, account);
+         }

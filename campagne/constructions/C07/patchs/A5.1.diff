@@ -1,0 +1,24 @@
+# C07-A5.1
+# La règle visée, selon le saboteur : Le bug viole l'ordre des contrôles du retrait : quand le solde ne couvre pas `amount + frais` et qu'aucune combinaison de billets disponibles ne fait `amount`, la spec exige `InsufficientFunds` (contrôle 3, avant le 4), mais la machine rend `CannotDispense`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -30,14 +30,14 @@
+         }
+ 
+         var fee = FeeFor(amount);
++        if (FewestNotes(amount, Available()) is not { } combination)
++        {
++            return Refuse(AtmStatus.CannotDispense, account);
++        }
++
+         if (amount + fee > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);
+-        }
+-
+-        if (FewestNotes(amount, Available()) is not { } combination)
+-        {
+-            return Refuse(AtmStatus.CannotDispense, account);
+         }
+ 
+         var dispensed = NoteCounts.None;

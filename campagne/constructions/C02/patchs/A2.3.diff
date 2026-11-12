@@ -1,0 +1,14 @@
+# C02-A2.3
+# La règle visée, selon le saboteur : Le bug viole la règle n°3 du retrait : si `amount + frais` dépasse `Balance`, le statut doit être `InsufficientFunds`. Or la machine compare au solde arrondi à la dizaine supérieure, et accepte donc un retrait sans frais qui dépasse le solde de 5 € (par exemple solde 95, retrait 100 : `Ok` et solde final -5 au lieu de `InsufficientFunds`).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -31,7 +31,8 @@
+         }
+ 
+         var fee = amount > FeeThreshold ? WithdrawalFee : 0;
+-        if (amount + fee > account.Balance)
++        var balanceInTens = (account.Balance + 5) / 10 * 10;
++        if (amount + fee > balanceInTens)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);
+         }

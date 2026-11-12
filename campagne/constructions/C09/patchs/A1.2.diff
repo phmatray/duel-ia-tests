@@ -1,0 +1,16 @@
+# C09-A1.2
+# La règle visée, selon le saboteur : Le bug viole la règle du dépôt selon laquelle un dépôt qui passe les trois contrôles (aucun billet, cassette bloquée, cassette pleine) doit réussir avec le statut `Ok` sans que `WithdrawnToday` intervienne : ici, le plafond du jour de 200 € (règle propre au retrait) est appliqué aussi aux dépôts, si bien que par exemple solde 100, déjà retiré 200, stock vide, dépôt 10×1 donne `DailyLimitExceeded` au lieu de `Ok`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -75,6 +75,11 @@
+             return Refuse(AtmStatus.CassetteFull, account);
+         }
+ 
++        if (account.WithdrawnToday + notes.Value > DailyLimit)
++        {
++            return Refuse(AtmStatus.DailyLimitExceeded, account);
++        }
++
+         if (!_dispenser.Load(notes))
+         {
+             return Refuse(AtmStatus.DispenserFault, account);

@@ -1,0 +1,19 @@
+# C02-A1.2
+# La règle visée, selon le saboteur : Le dépôt doit être refusé avec `CassetteJammed` seulement s'il contient un billet de la cassette bloquée (règle 2 du dépôt) ; ici il est aussi refusé dès que la cassette bloquée contient déjà des billets, et accepté jusqu'à la panne si elle est vide.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -61,12 +61,12 @@
+             return Refuse(AtmStatus.InvalidAmount, account);
+         }
+ 
+-        if (dispenser.Jammed is { } jammed && notes.Of(jammed) > 0)
++        var after = dispenser.Stock + notes;
++        if (dispenser.Jammed is { } jammed && after.Of(jammed) > 0)
+         {
+             return Refuse(AtmStatus.CassetteJammed, account);
+         }
+ 
+-        var after = dispenser.Stock + notes;
+         if (after.Fifties > CassetteCapacity || after.Twenties > CassetteCapacity || after.Tens > CassetteCapacity)
+         {
+             return Refuse(AtmStatus.CassetteFull, account);

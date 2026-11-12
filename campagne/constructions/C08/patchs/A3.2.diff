@@ -1,0 +1,13 @@
+# C08-A3.2
+# La règle visée, selon le saboteur : Retrait, contrôle n° 2 : le refus `DailyLimitExceeded` ne doit tomber que si `WithdrawnToday + amount` dépasse 200 (or le code refuse aussi tout retrait dès que `WithdrawnToday` atteint 100, par exemple 100 déjà retirés + 50 demandés).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -27,7 +27,7 @@
+             return Refuse(AtmStatus.InvalidAmount, account);
+         }
+ 
+-        if (account.WithdrawnToday + amount > DailyLimit)
++        if (account.WithdrawnToday >= FeeThreshold || account.WithdrawnToday + amount > DailyLimit)
+         {
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }

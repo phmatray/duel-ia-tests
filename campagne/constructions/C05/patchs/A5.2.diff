@@ -1,0 +1,12 @@
+# C05-A5.2
+# La règle visée, selon le saboteur : Le bug viole la règle « Les billets disponibles : le stock, sans la cassette bloquée, qui compte pour zéro » : quand la cassette de 10 € est bloquée, ses billets sont quand même comptés comme disponibles (le retrait finit en `DispenserFault` au lieu de `Ok` ou `CannotDispense`).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -96,7 +96,6 @@
+         {
+             Denomination.Fifty => stock with { Fifties = 0 },
+             Denomination.Twenty => stock with { Twenties = 0 },
+-            Denomination.Ten => stock with { Tens = 0 },
+             _ => stock,
+         };
+     }

@@ -1,0 +1,46 @@
+# C10-AE.1
+# La règle visée, selon le saboteur : La machine doit être sans mémoire entre deux appels et ne dépendre que du compte, de l'opération et du module (« La machine est sans mémoire entre deux appels : elle ne dépend que du compte, de l'opération et du module »), or elle garde une copie du stock prise à sa construction et ne voit plus les billets que le module gagne ou perd par une autre voie (rechargement direct par `Load`, autre machine), d'où des retraits ou des dépôts faux.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -9,6 +9,7 @@
+     public const int CassetteCapacity = 5;
+ 
+     private static readonly Denomination[] Denominations = [Denomination.Fifty, Denomination.Twenty, Denomination.Ten];
++    private NoteCounts _stock = dispenser.Stock;
+ 
+     public AtmResult Execute(AccountState account, Operation operation) => operation switch
+     {
+@@ -49,6 +50,7 @@
+             }
+ 
+             dispensed += pass;
++            _stock -= pass;
+         }
+ 
+         var after = new AccountState(account.Balance - amount - fee, account.WithdrawnToday + amount);
+@@ -68,7 +70,7 @@
+             return Refuse(AtmStatus.CassetteJammed, account);
+         }
+ 
+-        var after = dispenser.Stock + notes;
++        var after = _stock + notes;
+         if (Denominations.Any(d => after.Of(d) > CassetteCapacity))
+         {
+             return Refuse(AtmStatus.CassetteFull, account);
+@@ -78,6 +80,7 @@
+         {
+             return Refuse(AtmStatus.DispenserFault, account);
+         }
++        _stock = after;
+ 
+         return new AtmResult(AtmStatus.Ok, NoteCounts.None, 0, account with { Balance = account.Balance + notes.Value });
+     }
+@@ -88,7 +91,7 @@
+     /// <summary>Le stock utilisable : la cassette bloquée compte pour zéro.</summary>
+     private NoteCounts Available()
+     {
+-        var stock = dispenser.Stock;
++        var stock = _stock;
+ 
+         return dispenser.Jammed switch
+         {

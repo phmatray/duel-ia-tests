@@ -1,0 +1,24 @@
+# C02-A5.2
+# La règle visée, selon le saboteur : Le bug viole l'ordre des contrôles du retrait : le contrôle n°3 (`amount + frais` dépasse `Balance` → `InsufficientFunds`) doit passer avant le n°4 (aucune combinaison de billets disponibles → `CannotDispense`), mais le code les inverse, si bien qu'un retrait à la fois trop cher pour le solde et impossible à servir donne `CannotDispense` au lieu de `InsufficientFunds`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -31,14 +31,14 @@
+         }
+ 
+         var fee = amount > FeeThreshold ? WithdrawalFee : 0;
++        if (FewestNotes(amount, Available()) is not { } combination)
++        {
++            return Refuse(AtmStatus.CannotDispense, account);
++        }
++
+         if (amount + fee > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);
+-        }
+-
+-        if (FewestNotes(amount, Available()) is not { } combination)
+-        {
+-            return Refuse(AtmStatus.CannotDispense, account);
+         }
+ 
+         var dispensed = NoteCounts.None;

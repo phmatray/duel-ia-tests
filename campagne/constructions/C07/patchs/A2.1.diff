@@ -1,0 +1,21 @@
+# C07-A2.1
+# La règle visée, selon le saboteur : Le bug viole la règle « La machine est sans mémoire entre deux appels : elle ne dépend que du compte, de l'opération et du module » : `Available()` met en cache le stock disponible lu au premier retrait, si bien que les retraits suivants sur la même machine ignorent les billets sortis ou déposés entre-temps (`DispenserFault` ou `CannotDispense` à tort).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -9,6 +9,7 @@
+     public const int CassetteCapacity = 5;
+ 
+     private readonly IMoneyDispenser _dispenser = dispenser ?? throw new ArgumentNullException(nameof(dispenser));
++    private NoteCounts? _available;
+ 
+     public AtmResult Execute(AccountState account, Operation operation) => operation switch
+     {
+@@ -96,7 +97,7 @@
+     {
+         var stock = _dispenser.Stock;
+ 
+-        return _dispenser.Jammed switch
++        return _available ??= _dispenser.Jammed switch
+         {
+             Denomination.Fifty => stock with { Fifties = 0 },
+             Denomination.Twenty => stock with { Twenties = 0 },

@@ -1,0 +1,37 @@
+# C02-A4.1
+# La règle visée, selon le saboteur : Le bug viole la règle « La machine est sans mémoire entre deux appels : elle ne dépend que du compte, de l'opération et du module » : le contrôle de dépôt `CassetteFull` utilise un comptage des cassettes tenu par la machine au lieu du `Stock` du module, ce qui donne un mauvais statut dès que le module a changé en dehors de cette machine (une autre machine, ou un appel direct à `Load`/`Dispense`).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -9,6 +9,7 @@
+     private const int MaxNotesPerPass = 4;
+ 
+     private readonly IMoneyDispenser _dispenser = dispenser ?? throw new ArgumentNullException(nameof(dispenser));
++    private NoteCounts _stock = dispenser.Stock;
+ 
+     public AtmResult Execute(AccountState account, Operation operation) => operation switch
+     {
+@@ -51,6 +52,7 @@
+ 
+             dispensed += pass;
+         }
++        _stock -= combination;
+ 
+         var after = new AccountState(account.Balance - amount - fee, account.WithdrawnToday + amount);
+ 
+@@ -69,7 +71,7 @@
+             return Refuse(AtmStatus.CassetteJammed, account);
+         }
+ 
+-        var after = _dispenser.Stock + notes;
++        var after = _stock + notes;
+         if (after.Fifties > CassetteCapacity || after.Twenties > CassetteCapacity || after.Tens > CassetteCapacity)
+         {
+             return Refuse(AtmStatus.CassetteFull, account);
+@@ -80,6 +82,7 @@
+             return Refuse(AtmStatus.DispenserFault, account);
+         }
+ 
++        _stock = after;
+         return new AtmResult(AtmStatus.Ok, NoteCounts.None, 0, account with { Balance = account.Balance + notes.Value });
+     }
+ 

@@ -1,0 +1,13 @@
+# C02-A1.3
+# La règle visée, selon le saboteur : Le bug viole la règle du dépôt « Il ferait dépasser 5 billets dans une cassette → `CassetteFull` » : la cassette de 50 est refusée dès qu'elle atteindrait exactement 5 billets (`>=` au lieu de `>`), donc un dépôt qui la remplit tout juste, ou un dépôt sans billet de 50 alors qu'elle en contient déjà 5, rend `CassetteFull` au lieu de `Ok`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -67,7 +67,7 @@
+         }
+ 
+         var after = dispenser.Stock + notes;
+-        if (after.Fifties > CassetteCapacity || after.Twenties > CassetteCapacity || after.Tens > CassetteCapacity)
++        if (after.Fifties >= CassetteCapacity || after.Twenties > CassetteCapacity || after.Tens > CassetteCapacity)
+         {
+             return Refuse(AtmStatus.CassetteFull, account);
+         }

@@ -1,0 +1,13 @@
+# C01-A3.2
+# La règle visée, selon le saboteur : Le bug viole la règle « Si le module rend `false` malgré ces contrôles, c'est une panne : statut `DispenserFault` [...] `Notes` contient les billets déjà sortis lors d'un retrait » : à partir d'une panne au 3e passage, `Notes` ne contient que les billets du dernier passage réussi, au lieu du total sorti.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -49,7 +49,7 @@
+                 return new AtmResult(AtmStatus.DispenserFault, dispensed, 0, account);
+             }
+ 
+-            dispensed += pass;
++            dispensed = pass;
+         }
+ 
+         var after = new AccountState(account.Balance - amount - fee, account.WithdrawnToday + amount);

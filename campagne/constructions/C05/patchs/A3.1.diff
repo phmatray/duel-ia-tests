@@ -1,0 +1,14 @@
+# C05-A3.1
+# La règle visée, selon le saboteur : Le succès d'un retrait doit faire augmenter `WithdrawnToday` de `amount` ; ici, quand il y a des frais (montant > 100 €) et un retrait déjà fait dans la journée, `WithdrawnToday` est remplacé par `amount` au lieu d'être augmenté.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -52,7 +52,8 @@
+             dispensed += pass;
+         }
+ 
+-        var after = new AccountState(account.Balance - amount - fee, account.WithdrawnToday + amount);
++        var debited = new AccountState(account.Balance - amount, account.WithdrawnToday + amount);
++        var after = fee > 0 ? new AccountState(debited.Balance - fee, amount) : debited;
+ 
+         return new AtmResult(AtmStatus.Ok, combination, fee, after);
+     }

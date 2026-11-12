@@ -1,0 +1,17 @@
+# C01-AE.1
+# La règle visée, selon le saboteur : Le bug viole la règle « les billets sortent en autant de passages que nécessaire, 4 billets au plus par passage » : chaque passage ne puise plus que dans une seule cassette, si bien qu'une combinaison de plusieurs coupures qui tient en un passage (60 € = 50+10, 80 € = 50+20+10…) sort en deux ou trois passages, et une panne du module à un passage qui n'aurait pas dû exister donne `DispenserFault` avec des billets partiels au lieu de `Ok`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -130,10 +130,8 @@
+         {
+             var room = MaxNotesPerPass;
+             var fifties = Math.Min(remaining.Fifties, room);
+-            room -= fifties;
+-            var twenties = Math.Min(remaining.Twenties, room);
+-            room -= twenties;
+-            var tens = Math.Min(remaining.Tens, room);
++            var twenties = fifties > 0 ? 0 : Math.Min(remaining.Twenties, room);
++            var tens = fifties + twenties > 0 ? 0 : Math.Min(remaining.Tens, room);
+ 
+             var pass = new NoteCounts(fifties, twenties, tens);
+             remaining -= pass;

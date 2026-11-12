@@ -1,0 +1,21 @@
+# C06-A2.3
+# La règle visée, selon le saboteur : Le bug viole la règle du dépôt réussi « `Balance` augmente de leur valeur » : le nouveau solde est plafonné à 250 €, donc un dépôt qui ferait dépasser 250 € (par exemple solde 250 et dépôt d'un billet de 10 €) ne crédite pas toute sa valeur.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -7,6 +7,7 @@
+     private const int WithdrawalFee = 5;
+     private const int CassetteCapacity = 5;
+     private const int MaxNotesPerPass = 4;
++    private const int MaxBalance = 250;
+ 
+     public AtmResult Execute(AccountState account, Operation operation) => operation switch
+     {
+@@ -77,7 +78,7 @@
+             return Refuse(AtmStatus.DispenserFault, account);
+         }
+ 
+-        return new AtmResult(AtmStatus.Ok, NoteCounts.None, 0, account with { Balance = account.Balance + notes.Value });
++        return new AtmResult(AtmStatus.Ok, NoteCounts.None, 0, account with { Balance = Math.Min(account.Balance + notes.Value, MaxBalance) });
+     }
+ 
+     private static AtmResult Refuse(AtmStatus status, AccountState account) =>

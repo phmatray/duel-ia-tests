@@ -1,0 +1,13 @@
+# C10-A1.1
+# La règle visée, selon le saboteur : Règle n° 2 du dépôt : le statut `CassetteJammed` doit être rendu quand le **dépôt** contient un billet de la cassette bloquée, alors que la machine regarde le **stock** de cette cassette.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -63,7 +63,7 @@
+             return Refuse(AtmStatus.InvalidAmount, account);
+         }
+ 
+-        if (dispenser.Jammed is { } jammed && notes.Of(jammed) > 0)
++        if (dispenser.Jammed is { } jammed && dispenser.Stock.Of(jammed) > 0)
+         {
+             return Refuse(AtmStatus.CassetteJammed, account);
+         }

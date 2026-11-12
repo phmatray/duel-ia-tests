@@ -1,0 +1,18 @@
+# C03-A1.3
+# La règle visée, selon le saboteur : Le bug viole la règle « La machine est sans mémoire entre deux appels : elle ne dépend que du compte, de l'opération et du module » : `CashMachine` met en cache le stock disponible lu au premier retrait, si bien qu'une machine réutilisée travaille ensuite sur un stock périmé (retrait refusé à tort en `CannotDispense` après un dépôt, ou `DispenserFault` au lieu de `CannotDispense` après un retrait).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -87,8 +87,12 @@
+     private static AtmResult Refuse(AtmStatus status, AccountState account) =>
+         new(status, NoteCounts.None, 0, account);
+ 
++    private NoteCounts? _available;
++
++    private NoteCounts Available() => _available ??= ComputeAvailable();
++
+     /// <summary>Le stock utilisable : la cassette bloquée compte pour zéro.</summary>
+-    private NoteCounts Available()
++    private NoteCounts ComputeAvailable()
+     {
+         var stock = _dispenser.Stock;
+         var jammed = _dispenser.Jammed;

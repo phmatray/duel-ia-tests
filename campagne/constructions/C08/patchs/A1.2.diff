@@ -1,0 +1,13 @@
+# C08-A1.2
+# La règle visée, selon le saboteur : Règle violée : un dépôt n'est refusé en `CassetteFull` que s'il ferait **dépasser** 5 billets dans une cassette (contrôle n°3 du dépôt) ; le bug (`>=` au lieu de `>`) refuse aussi les dépôts quand une cassette arrive à exactement 5 billets, ou en contient déjà 5.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -72,7 +72,7 @@
+         }
+ 
+         var after = dispenser.Stock + notes;
+-        if (after.Fifties > CassetteCapacity || after.Twenties > CassetteCapacity || after.Tens > CassetteCapacity)
++        if (after.Fifties >= CassetteCapacity || after.Twenties >= CassetteCapacity || after.Tens >= CassetteCapacity)
+         {
+             return Refuse(AtmStatus.CassetteFull, account);
+         }

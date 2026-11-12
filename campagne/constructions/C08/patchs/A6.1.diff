@@ -1,0 +1,106 @@
+# C08-A6.1
+# La règle visée, selon le saboteur : Le bug viole la règle des frais : « 5 € si `amount` est strictement supérieur à 100 €, 0 € sinon » — un retrait d'exactement 100 € est facturé 5 € (et refusé en `InsufficientFunds` si le solde vaut exactement 100).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -32,7 +32,7 @@
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+ 
+-        var fee = amount > FeeThreshold ? WithdrawalFee : 0;
++        var fee = amount >= FeeThreshold ? WithdrawalFee : 0;
+         if (amount + fee > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);
+--- a/Atm.Tests/CashMachineTests.cs
++++ b/Atm.Tests/CashMachineTests.cs
+@@ -32,7 +32,7 @@
+     {
+         { 100, 0, new(1, 3, 0), null, 60, new(0, 3, 0), 0, 40, 60 },
+         { 100, 0, new(1, 1, 1), null, 80, new(1, 1, 1), 0, 20, 80 },
+-        { 105, 0, new(5, 5, 5), null, 100, new(2, 0, 0), 0, 5, 100 },
++        { 105, 0, new(5, 5, 5), null, 100, new(2, 0, 0), 5, 0, 100 },
+         { 115, 0, new(5, 5, 5), null, 110, new(2, 0, 1), 5, 0, 110 },
+         { 250, 0, new(2, 2, 0), Denomination.Fifty, 40, new(0, 2, 0), 0, 210, 40 },
+     };
+@@ -157,12 +157,12 @@
+     }
+ 
+     [Fact]
+-    public void No_fee_at_exactly_100()
+-    {
+-        var (result, _) = Run(100, 0, new NoteCounts(2, 0, 0), null, Withdraw(100));
+-
+-        Assert.Equal(AtmStatus.Ok, result.Status);
+-        Assert.Equal(0, result.Fee);
++    public void Fee_at_exactly_100()
++    {
++        var (result, _) = Run(105, 0, new NoteCounts(2, 0, 0), null, Withdraw(100));
++
++        Assert.Equal(AtmStatus.Ok, result.Status);
++        Assert.Equal(5, result.Fee);
+         Assert.Equal(new AccountState(0, 100), result.Account);
+     }
+ 
+@@ -359,7 +359,7 @@
+     {
+         if (amount <= 0 || amount % 10 != 0) return (AtmStatus.InvalidAmount, default, 0);
+         if (withdrawn + amount > 200) return (AtmStatus.DailyLimitExceeded, default, 0);
+-        var fee = amount > 100 ? 5 : 0;
++        var fee = amount >= 100 ? 5 : 0;
+         if (amount + fee > balance) return (AtmStatus.InsufficientFunds, default, 0);
+ 
+         var candidates = new List<NoteCounts>();
+--- a/Atm.Tests/Integration.cs
++++ b/Atm.Tests/Integration.cs
+@@ -144,17 +144,17 @@
+         var machine = new CashMachine(dispenser);
+ 
+         var first = Step(machine, dispenser, new(250, 0), Withdraw(100),
+-            AtmStatus.Ok, new(2, 0, 0), 0, new(150, 100), new(3, 5, 5));
++            AtmStatus.Ok, new(2, 0, 0), 5, new(145, 100), new(3, 5, 5));
+         var second = Step(machine, dispenser, first.Account, Withdraw(90),
+-            AtmStatus.Ok, new(1, 2, 0), 0, new(60, 190), new(2, 3, 5));
++            AtmStatus.Ok, new(1, 2, 0), 0, new(55, 190), new(2, 3, 5));
+ 
+         // Un dépôt ne rend pas de plafond.
+         var third = Step(machine, dispenser, second.Account, Deposit(0, 1, 0),
+-            AtmStatus.Ok, NoteCounts.None, 0, new(80, 190), new(2, 4, 5));
++            AtmStatus.Ok, NoteCounts.None, 0, new(75, 190), new(2, 4, 5));
+         Step(machine, dispenser, third.Account, Withdraw(20),
+-            AtmStatus.DailyLimitExceeded, NoteCounts.None, 0, new(80, 190), new(2, 4, 5));
++            AtmStatus.DailyLimitExceeded, NoteCounts.None, 0, new(75, 190), new(2, 4, 5));
+         Step(machine, dispenser, third.Account, Withdraw(10),
+-            AtmStatus.Ok, new(0, 0, 1), 0, new(70, 200), new(2, 4, 4));
++            AtmStatus.Ok, new(0, 0, 1), 0, new(65, 200), new(2, 4, 4));
+     }
+ 
+     [Fact]
+@@ -408,7 +408,7 @@
+         {
+             if (amount <= 0 || amount % 10 != 0) return Refuse(AtmStatus.InvalidAmount, account, stock);
+             if (account.WithdrawnToday + amount > 200) return Refuse(AtmStatus.DailyLimitExceeded, account, stock);
+-            var fee = amount > 100 ? 5 : 0;
++            var fee = amount >= 100 ? 5 : 0;
+             if (amount + fee > account.Balance) return Refuse(AtmStatus.InsufficientFunds, account, stock);
+ 
+             int Usable(Denomination d) => jammed == d ? 0 : stock.Of(d);
+--- a/Atm.Tests/Proprietes.cs
++++ b/Atm.Tests/Proprietes.cs
+@@ -248,7 +248,7 @@
+     {
+         var (result, _) = Run(situation, operation);
+ 
+-        var expected = operation is Operation.Withdraw { Amount: > 100 } && result.Status == AtmStatus.Ok ? 5 : 0;
++        var expected = operation is Operation.Withdraw { Amount: >= 100 } && result.Status == AtmStatus.Ok ? 5 : 0;
+         Assert.Equal(expected, result.Fee);
+     }
+ 
+@@ -710,7 +710,7 @@
+     // Outils.
+     // ===================================================================================================
+ 
+-    private static int Frais(int amount) => amount > 100 ? 5 : 0;
++    private static int Frais(int amount) => amount >= 100 ? 5 : 0;
+ 
+     private static (AtmResult Result, MoneyDispenser Dispenser) Run(Situation situation, Operation operation)
+     {

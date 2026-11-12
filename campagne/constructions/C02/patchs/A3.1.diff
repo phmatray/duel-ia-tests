@@ -1,0 +1,13 @@
+# C02-A3.1
+# La règle visée, selon le saboteur : Le contrôle n°3 du retrait (« `amount + frais` dépasse `Balance` → `InsufficientFunds` ») est violé : le code compare `amount + frais` à `Balance + WithdrawnToday`, si bien que dès qu'un retrait a déjà été fait dans la journée, la machine accepte des retraits supérieurs au solde (et laisse le solde devenir négatif).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -31,7 +31,7 @@
+         }
+ 
+         var fee = amount > FeeThreshold ? WithdrawalFee : 0;
+-        if (amount + fee > account.Balance)
++        if (amount + fee > account.Balance + account.WithdrawnToday)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);
+         }

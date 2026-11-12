@@ -1,0 +1,30 @@
+# C06-A2.2
+# La règle visée, selon le saboteur : Le bug viole la règle « La machine est sans mémoire entre deux appels : elle ne dépend que du compte, de l'opération et du module » : `CashMachine` garde une copie du stock prise à sa construction (`private readonly NoteCounts stock = dispenser.Stock;`) au lieu de lire `dispenser.Stock` à chaque appel. Dès le deuxième appel sur la même machine, la combinaison du retrait et le contrôle `CassetteFull` du dépôt reposent sur un stock périmé. On obtient alors `DispenserFault` au lieu de `CannotDispense` ou de `CassetteFull`, une combinaison fausse, ou un `CannotDispense` à tort après un dépôt.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -7,6 +7,7 @@
+     private const int WithdrawalFee = 5;
+     private const int CassetteCapacity = 5;
+     private const int MaxNotesPerPass = 4;
++    private readonly NoteCounts stock = dispenser.Stock;
+ 
+     public AtmResult Execute(AccountState account, Operation operation) => operation switch
+     {
+@@ -66,7 +67,7 @@
+             return Refuse(AtmStatus.CassetteJammed, account);
+         }
+ 
+-        var after = dispenser.Stock + notes;
++        var after = stock + notes;
+         if (after.Fifties > CassetteCapacity || after.Twenties > CassetteCapacity || after.Tens > CassetteCapacity)
+         {
+             return Refuse(AtmStatus.CassetteFull, account);
+@@ -86,8 +87,6 @@
+     /// <summary>Le stock utilisable : la cassette bloquée compte pour zéro.</summary>
+     private NoteCounts Available()
+     {
+-        var stock = dispenser.Stock;
+-
+         return dispenser.Jammed switch
+         {
+             Denomination.Fifty => stock with { Fifties = 0 },

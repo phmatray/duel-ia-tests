@@ -1,0 +1,24 @@
+# C02-A2.1
+# La règle visée, selon le saboteur : Règle violée : les contrôles du retrait se font dans l'ordre et le contrôle n°3 (« amount + frais dépasse Balance » → InsufficientFunds) doit passer avant le n°4 (CannotDispense) ; or quand seuls les frais rendent le solde insuffisant et qu'aucune combinaison de billets n'existe, la machine répond CannotDispense au lieu de InsufficientFunds.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -28,7 +28,7 @@
+         }
+ 
+         var fee = amount > FeeThreshold ? WithdrawalFee : 0;
+-        if (amount + fee > account.Balance)
++        if (amount > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);
+         }
+@@ -36,6 +36,10 @@
+         if (FindCombination(amount, Available()) is not { } combination)
+         {
+             return Refuse(AtmStatus.CannotDispense, account);
++        }
++        if (amount + fee > account.Balance)
++        {
++            return Refuse(AtmStatus.InsufficientFunds, account);
+         }
+ 
+         var dispensed = NoteCounts.None;

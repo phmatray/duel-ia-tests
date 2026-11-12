@@ -1,0 +1,16 @@
+# C05-A2.2
+# La règle visée, selon le saboteur : Le dépôt ne peut être refusé que pour les trois raisons de son tableau (aucun billet, cassette bloquée, cassette pleine) et `WithdrawnToday` ne doit pas intervenir ; or le dépôt est maintenant refusé en `DailyLimitExceeded` dès que `WithdrawnToday + valeur du dépôt` dépasse 200 (par exemple solde 10, déjà retiré 200, stock vide, dépôt 50×1 : la spec attend `Ok`).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -73,6 +73,11 @@
+         if (after.Fifties > CassetteCapacity || after.Twenties > CassetteCapacity || after.Tens > CassetteCapacity)
+         {
+             return Refuse(AtmStatus.CassetteFull, account);
++        }
++
++        if (account.WithdrawnToday + notes.Value > DailyLimit)
++        {
++            return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+ 
+         if (!_dispenser.Load(notes))

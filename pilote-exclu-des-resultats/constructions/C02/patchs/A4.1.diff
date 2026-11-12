@@ -1,0 +1,22 @@
+# C02-A4.1
+# La règle visée, selon le saboteur : Le bug viole la règle « Si le module rend false malgré ces contrôles, c'est une panne : statut DispenserFault, [...] Notes contient les billets déjà sortis lors d'un retrait » : quand le module qui tombe en panne a une cassette bloquée non vide, Notes ne contient plus les billets réellement sortis (le nombre de billets de la coupure bloquée devient négatif).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -38,15 +38,13 @@
+             return Refuse(AtmStatus.CannotDispense, account);
+         }
+ 
+-        var dispensed = NoteCounts.None;
++        var before = Available();
+         foreach (var pass in SplitIntoPasses(combination))
+         {
+             if (!dispenser.Dispense(pass))
+             {
+-                return new AtmResult(AtmStatus.DispenserFault, dispensed, 0, account);
++                return new AtmResult(AtmStatus.DispenserFault, before - dispenser.Stock, 0, account);
+             }
+-
+-            dispensed += pass;
+         }
+ 
+         var after = new AccountState(account.Balance - amount - fee, account.WithdrawnToday + amount);

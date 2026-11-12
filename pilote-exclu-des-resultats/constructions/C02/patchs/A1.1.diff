@@ -1,0 +1,15 @@
+# C02-A1.1
+# La règle visée, selon le saboteur : Un dépôt ne doit être refusé avec `CassetteFull` que s'il ferait dépasser 5 billets dans une cassette (contrôle n°3 du dépôt), alors que le code modifié le refuse dès qu'une cassette du stock est pleine, même quand le dépôt ne contient aucun billet de cette coupure.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -66,8 +66,8 @@
+             return Refuse(AtmStatus.CassetteJammed, account);
+         }
+ 
+-        var after = dispenser.Stock + notes;
+-        if (after.Fifties > CassetteCapacity || after.Twenties > CassetteCapacity || after.Tens > CassetteCapacity)
++        var after = dispenser.Stock;
++        if (after.Fifties >= CassetteCapacity || after.Twenties >= CassetteCapacity || after.Tens >= CassetteCapacity)
+         {
+             return Refuse(AtmStatus.CassetteFull, account);
+         }

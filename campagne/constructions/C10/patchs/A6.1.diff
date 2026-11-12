@@ -1,0 +1,98 @@
+# C10-A6.1
+# La règle visée, selon le saboteur : Le bug viole l'ordre des contrôles du dépôt (contrôle n° 2 avant le n° 3) : un dépôt qui contient un billet de la cassette bloquée doit être refusé en `CassetteJammed`, mais si cette cassette bloquée est pleine (5 billets), la machine répond `CassetteFull` (ex. : stock 50×5, 50 bloquée, dépôt 50×1).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -63,7 +63,7 @@
+             return Refuse(AtmStatus.InvalidAmount, account);
+         }
+ 
+-        if (dispenser.Jammed is { } jammed && notes.Of(jammed) > 0)
++        if (dispenser.Jammed is { } jammed && notes.Of(jammed) > 0 && dispenser.Stock.Of(jammed) < CassetteCapacity)
+         {
+             return Refuse(AtmStatus.CassetteJammed, account);
+         }
+--- a/Atm.Tests/CashMachineTests.cs
++++ b/Atm.Tests/CashMachineTests.cs
+@@ -230,7 +230,7 @@
+ 
+     [Fact]
+     public void Deposit_Jammed_CheckedBeforeFull() =>
+-        AssertRefused(AtmStatus.CassetteJammed, A(10, 0), N(5, 5, 5), Denomination.Fifty, new Operation.Deposit(N(1, 1, 1)));
++        AssertRefused(AtmStatus.CassetteJammed, A(10, 0), N(4, 5, 5), Denomination.Fifty, new Operation.Deposit(N(1, 1, 1)));
+ 
+     [Fact]
+     public void Deposit_OtherCassetteJammed_IsAccepted()
+--- a/Atm.Tests/Integration.cs
++++ b/Atm.Tests/Integration.cs
+@@ -239,28 +239,28 @@
+     [Fact]
+     public void Scenario_JammedCassette_StaysUntouchedAcrossOperations()
+     {
+-        var dispenser = new MoneyDispenser(N(5, 2, 3), Denomination.Fifty);
++        var dispenser = new MoneyDispenser(N(4, 2, 3), Denomination.Fifty);
+         var machine = new CashMachine(dispenser);
+ 
+         // 100 sans les 50 : au plus 20×2 + 10×3 = 70 → refus.
+         var refused = machine.Execute(A(250, 0), new Operation.Withdraw(100));
+         Assert.Equal(new AtmResult(AtmStatus.CannotDispense, NoteCounts.None, 0, A(250, 0)), refused);
+-        Assert.Equal(N(5, 2, 3), dispenser.Stock);
++        Assert.Equal(N(4, 2, 3), dispenser.Stock);
+ 
+         // 70 : 20×2 + 10×3, les 50 restent en place.
+         var ok = machine.Execute(A(250, 0), new Operation.Withdraw(70));
+         Assert.Equal(new AtmResult(AtmStatus.Ok, N(0, 2, 3), 0, A(180, 70)), ok);
+-        Assert.Equal(N(5, 0, 0), dispenser.Stock);
++        Assert.Equal(N(4, 0, 0), dispenser.Stock);
+ 
+         // Dépôt contenant un 50 : refusé, même si les autres cassettes ont de la place.
+         var jammed = machine.Execute(ok.Account, new Operation.Deposit(N(1, 1, 1)));
+         Assert.Equal(new AtmResult(AtmStatus.CassetteJammed, NoteCounts.None, 0, A(180, 70)), jammed);
+-        Assert.Equal(N(5, 0, 0), dispenser.Stock);
++        Assert.Equal(N(4, 0, 0), dispenser.Stock);
+ 
+         // Dépôt sans 50 : accepté.
+         var deposit = machine.Execute(ok.Account, new Operation.Deposit(N(0, 1, 1)));
+         Assert.Equal(new AtmResult(AtmStatus.Ok, NoteCounts.None, 0, A(210, 70)), deposit);
+-        Assert.Equal(N(5, 1, 1), dispenser.Stock);
++        Assert.Equal(N(4, 1, 1), dispenser.Stock);
+         Assert.Equal(Denomination.Fifty, dispenser.Jammed);
+     }
+ 
+@@ -499,7 +499,7 @@
+             return (Refusal(AtmStatus.InvalidAmount), stock);
+         }
+ 
+-        if (jammed is { } j && notes.Of(j) > 0)
++        if (jammed is { } j && notes.Of(j) > 0 && stock.Of(j) < 5)
+         {
+             return (Refusal(AtmStatus.CassetteJammed), stock);
+         }
+--- a/Atm.Tests/Proprietes.cs
++++ b/Atm.Tests/Proprietes.cs
+@@ -676,7 +676,7 @@
+         var apres = situation.Stock + billets;
+         var attendu =
+             billets.Total == 0 ? AtmStatus.InvalidAmount
+-            : situation.Jammed is { } bloquee && billets.Of(bloquee) > 0 ? AtmStatus.CassetteJammed
++            : situation.Jammed is { } bloquee && billets.Of(bloquee) > 0 && situation.Stock.Of(bloquee) < 5 ? AtmStatus.CassetteJammed
+             : Domaine.Coupures.Any(c => apres.Of(c) > 5) ? AtmStatus.CassetteFull
+             : AtmStatus.Ok;
+ 
+@@ -734,7 +734,7 @@
+ 
+     /// <summary>
+     /// Une cassette bloquée que le dépôt ne touche pas ne change rien ; un dépôt non vide qui la touche est
+-    /// toujours refusé en CassetteJammed, quel que soit le remplissage.
++    /// toujours refusé (CassetteJammed, ou CassetteFull si elle est pleine).
+     /// </summary>
+     [Property(Arbitrary = [typeof(Generateurs)], Replay = Graine, MaxTest = Cas)]
+     public void Depot_LaCassetteBloqueeNeCompteQueSiLeDepotLaTouche(Situation situation, Depot depot)
+@@ -744,7 +744,7 @@
+ 
+         if (situation.Jammed is { } bloquee && depot.Billets.Of(bloquee) > 0)
+         {
+-            Assert.Equal(AtmStatus.CassetteJammed, result.Status);
++            Assert.Contains(result.Status, new[] { AtmStatus.CassetteJammed, AtmStatus.CassetteFull });
+         }
+         else
+         {

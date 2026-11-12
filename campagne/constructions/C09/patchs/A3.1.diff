@@ -1,0 +1,16 @@
+# C09-A3.1
+# La règle visée, selon le saboteur : Le dépôt n'a que trois refus (dépôt vide, cassette bloquée, cassette pleine) et `WithdrawnToday` n'y joue aucun rôle, or le code refuse avec `DailyLimitExceeded` un dépôt valide dès que `WithdrawnToday` + la valeur déposée dépasse 200.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -75,6 +75,11 @@
+             return Refuse(AtmStatus.CassetteFull, account);
+         }
+ 
++        if (account.WithdrawnToday + notes.Value > DailyLimit)
++        {
++            return Refuse(AtmStatus.DailyLimitExceeded, account);
++        }
++
+         if (!_dispenser.Load(notes))
+         {
+             return Refuse(AtmStatus.DispenserFault, account);

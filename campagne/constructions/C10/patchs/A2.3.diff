@@ -1,0 +1,13 @@
+# C10-A2.3
+# La règle visée, selon le saboteur : Le bug viole la règle des frais : « 5 € si `amount` est strictement supérieur à 100 €, 0 € sinon » ; le code les calcule sur `WithdrawnToday + amount`, donc un retrait de 100 € ou moins, quand le compte a déjà retiré quelque chose aujourd'hui et que le cumul dépasse 100 €, paie 5 € de trop (ou est refusé à tort en `InsufficientFunds`).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -29,7 +29,7 @@
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+ 
+-        var fee = amount > FeeThreshold ? WithdrawalFee : 0;
++        var fee = account.WithdrawnToday + amount > FeeThreshold ? WithdrawalFee : 0;
+         if (amount + fee > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);

@@ -1,0 +1,12 @@
+# C10-A5.1
+# La règle visée, selon le saboteur : Le bug viole la règle « les billets sortent en autant de passages que nécessaire, 4 billets au plus par passage » : un passage peut compter plus de 4 billets, le vrai module le refuse, et un retrait qui devrait réussir (`Ok`) finit en `DispenserFault`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -134,7 +134,6 @@
+             var fifties = Math.Min(room, remaining.Fifties);
+             room -= fifties;
+             var twenties = Math.Min(room, remaining.Twenties);
+-            room -= twenties;
+             var tens = Math.Min(room, remaining.Tens);
+ 
+             var pass = new NoteCounts(fifties, twenties, tens);

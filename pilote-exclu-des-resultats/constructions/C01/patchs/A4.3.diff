@@ -1,0 +1,13 @@
+# C01-A4.3
+# La règle visée, selon le saboteur : Si le module tombe en panne pendant un retrait, `Notes` doit contenir tous les billets déjà sortis (« `Notes` contient les billets déjà sortis lors d'un retrait »), alors que le code ne garde que ceux du dernier passage réussi.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -49,7 +49,7 @@
+                 return new AtmResult(AtmStatus.DispenserFault, dispensed, 0, account);
+             }
+ 
+-            dispensed += pass;
++            dispensed = pass;
+         }
+ 
+         var after = new AccountState(account.Balance - amount - fee, account.WithdrawnToday + amount);

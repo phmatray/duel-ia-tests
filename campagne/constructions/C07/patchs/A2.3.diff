@@ -1,0 +1,16 @@
+# C07-A2.3
+# La règle visée, selon le saboteur : Le bug viole l'ordre des contrôles du retrait (« Les contrôles se font dans cet ordre. Le premier qui échoue donne le statut. ») : quand le solde est non nul mais insuffisant (contrôle 3) et qu'aucun billet n'est disponible, la machine rend `CannotDispense` (contrôle 4) au lieu de `InsufficientFunds`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -27,6 +27,11 @@
+         if (account.WithdrawnToday + amount > DailyLimit)
+         {
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
++        }
++
++        if (account.Balance == 0 || Available().Total == 0)
++        {
++            return Refuse(account.Balance == 0 ? AtmStatus.InsufficientFunds : AtmStatus.CannotDispense, account);
+         }
+ 
+         var fee = FeeFor(amount);

@@ -1,0 +1,7 @@
+# Bâtisseur et gardiens sans Stryker (Δ2c, Δ3, Δ4) : la couverture, rien de plus.
+FROM banc-006:2.1.318
+USER root
+RUN HOME=/root dotnet tool install --tool-path /opt/outils coverlet.console --version 6.0.4
+ENV PATH=$PATH:/opt/outils
+RUN rm -rf /home/agent/.nuget /home/agent/.dotnet
+USER agent

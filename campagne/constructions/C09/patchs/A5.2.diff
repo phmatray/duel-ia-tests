@@ -1,0 +1,19 @@
+# C09-A5.2
+# La règle visée, selon le saboteur : Le bug viole la règle « Les frais : 5 € si `amount` > 100 €, 0 € sinon. Ils ne comptent pas dans le plafond du jour » : le contrôle du plafond journalier ajoute les frais (`WithdrawnToday + amount + frais > 200`), si bien qu'un retrait de plus de 100 € qui amène exactement `WithdrawnToday` à 200 est refusé à tort avec `DailyLimitExceeded`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -25,12 +25,12 @@
+             return Refuse(AtmStatus.InvalidAmount, account);
+         }
+ 
+-        if (account.WithdrawnToday + amount > DailyLimit)
++        var fee = amount > FeeThreshold ? HighAmountFee : 0;
++        if (account.WithdrawnToday + amount + fee > DailyLimit)
+         {
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+ 
+-        var fee = amount > FeeThreshold ? HighAmountFee : 0;
+         if (amount + fee > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);

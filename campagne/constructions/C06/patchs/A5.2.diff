@@ -1,0 +1,13 @@
+# C06-A5.2
+# La règle visée, selon le saboteur : Dépôt, contrôle n°3 : un dépôt qui ferait dépasser 5 billets dans une cassette doit être refusé avec le statut `CassetteFull` (ici, quand seule la cassette de 10 € déborde, le contrôle la saute, le module refuse le chargement et la machine rend `DispenserFault`).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -67,7 +67,7 @@
+         }
+ 
+         var after = dispenser.Stock + notes;
+-        if (after.Fifties > CassetteCapacity || after.Twenties > CassetteCapacity || after.Tens > CassetteCapacity)
++        if (after.Fifties > CassetteCapacity || after.Twenties > CassetteCapacity || after.Twenties > CassetteCapacity)
+         {
+             return Refuse(AtmStatus.CassetteFull, account);
+         }

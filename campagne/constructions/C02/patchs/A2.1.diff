@@ -1,0 +1,14 @@
+# C02-A2.1
+# La règle visée, selon le saboteur : Le contrôle n°3 du retrait (`amount + frais` dépasse `Balance` ⇒ `InsufficientFunds`) n'est plus respecté : le solde est arrondi à la dizaine la plus proche avant d'être comparé, si bien qu'un retrait sans frais est accepté quand il manque 5 € au solde (par exemple solde 95, retrait 100 : on obtient `Ok` et un solde de -5).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -31,7 +31,8 @@
+         }
+ 
+         var fee = amount > FeeThreshold ? WithdrawalFee : 0;
+-        if (amount + fee > account.Balance)
++        var withdrawable = (account.Balance + 5) / 10 * 10; // les billets vont par dizaines
++        if (amount + fee > withdrawable)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);
+         }

@@ -1,0 +1,13 @@
+# C10-A2.1
+# La règle visée, selon le saboteur : Le bug viole la règle n° 2 du dépôt (refuser avec `CassetteJammed` si le dépôt contient un billet de la cassette bloquée), car le code regarde le stock de la cassette bloquée au lieu des billets déposés.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -63,7 +63,7 @@
+             return Refuse(AtmStatus.InvalidAmount, account);
+         }
+ 
+-        if (dispenser.Jammed is { } jammed && notes.Of(jammed) > 0)
++        if (dispenser.Jammed is { } jammed && dispenser.Stock.Of(jammed) > 0)
+         {
+             return Refuse(AtmStatus.CassetteJammed, account);
+         }

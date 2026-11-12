@@ -1,0 +1,13 @@
+# C02-A5.1
+# La règle visée, selon le saboteur : Le bug viole la règle « Si le module rend `false` malgré ces contrôles, c'est une panne : statut `DispenserFault`, […] `Fee` à 0 » : lors d'une panne pendant un retrait de plus de 100 €, le résultat annonce des frais de 5 € au lieu de 0.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -43,7 +43,7 @@
+         {
+             if (!dispenser.Dispense(pass))
+             {
+-                return new AtmResult(AtmStatus.DispenserFault, dispensed, 0, account);
++                return new AtmResult(AtmStatus.DispenserFault, dispensed, fee, account);
+             }
+ 
+             dispensed += pass;

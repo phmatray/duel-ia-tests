@@ -1,0 +1,13 @@
+# C08-A1.3
+# La règle visée, selon le saboteur : Dépôt, contrôle n°3 : le refus `CassetteFull` n'est dû que si le dépôt ferait **dépasser** 5 billets dans une cassette ; un dépôt qui amène une cassette à exactement 5 billets doit réussir (`Ok`), or il est refusé.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -72,7 +72,7 @@
+         }
+ 
+         var after = dispenser.Stock + notes;
+-        if (after.Fifties > CassetteCapacity || after.Twenties > CassetteCapacity || after.Tens > CassetteCapacity)
++        if (after.Fifties >= CassetteCapacity || after.Twenties >= CassetteCapacity || after.Tens >= CassetteCapacity)
+         {
+             return Refuse(AtmStatus.CassetteFull, account);
+         }

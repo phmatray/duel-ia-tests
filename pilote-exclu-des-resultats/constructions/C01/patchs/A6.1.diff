@@ -1,0 +1,35 @@
+# C01-A6.1
+# La règle visée, selon le saboteur : Le bug viole la règle « Si le module rend `false` malgré ces contrôles, c'est une panne : statut `DispenserFault`, on s'arrête aussitôt, `Fee` à 0, compte identique » : lors d'une panne en cours de retrait, `WithdrawnToday` augmente de la valeur des billets déjà sortis au lieu de rester inchangé.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -46,7 +46,7 @@
+         {
+             if (!_dispenser.Dispense(pass))
+             {
+-                return new AtmResult(AtmStatus.DispenserFault, dispensed, 0, account);
++                return new AtmResult(AtmStatus.DispenserFault, dispensed, 0, account with { WithdrawnToday = account.WithdrawnToday + dispensed.Value });
+             }
+ 
+             dispensed += pass;
+--- a/Atm.Tests/CashMachineTests.cs
++++ b/Atm.Tests/CashMachineTests.cs
+@@ -302,7 +302,7 @@
+         Assert.Equal(dispenser.DispenseCalls[0], result.Notes);
+         Assert.Equal(4, result.Notes.Total);
+         Assert.Equal(0, result.Fee);
+-        Assert.Equal(new AccountState(250, 0), result.Account);
++        Assert.Equal(250, result.Account.Balance);
+         Assert.Equal(2, dispenser.DispenseCalls.Count);
+         Assert.Equal(Full - result.Notes, dispenser.Stock);
+     }
+--- a/Atm.Tests/Proprietes.cs
++++ b/Atm.Tests/Proprietes.cs
+@@ -504,7 +504,7 @@
+ 
+         Assert.Equal(AtmStatus.DispenserFault, result.Status);
+         Assert.Equal(0, result.Fee);
+-        Assert.Equal(s.Account, result.Account);
++        Assert.Equal(s.Account.Balance, result.Account.Balance);
+         // On s'arrête aussitôt : aucun passage après celui qui a échoué.
+         Assert.Equal(failAt, dispenser.DispenseCalls.Count);
+         // Les billets annoncés sont ceux des passages réussis, et ce sont eux qui ont quitté le module.

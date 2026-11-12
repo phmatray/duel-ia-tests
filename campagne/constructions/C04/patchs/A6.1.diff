@@ -1,0 +1,128 @@
+# C04-A6.1
+# La règle visée, selon le saboteur : Le bug viole la règle des frais : « 5 € si `amount` est strictement supérieur à 100 €, 0 € sinon » — un retrait de exactement 100 € est désormais facturé 5 € (et refusé en `InsufficientFunds` si le solde vaut entre 100 et 104 €).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -34,7 +34,7 @@
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+ 
+-        var fee = amount > FeeThreshold ? WithdrawalFee : 0;
++        var fee = amount >= FeeThreshold ? WithdrawalFee : 0;
+         if (amount + fee > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);
+--- a/Atm.Tests/Integration.cs
++++ b/Atm.Tests/Integration.cs
+@@ -78,7 +78,7 @@
+     {
+         { 100, 0, new(1, 3, 0), null, new Operation.Withdraw(60), Ok(new(0, 3, 0), 0, 40, 60), new(1, 0, 0) },
+         { 100, 0, new(1, 1, 1), null, new Operation.Withdraw(80), Ok(new(1, 1, 1), 0, 20, 80), new(0, 0, 0) },
+-        { 105, 0, new(5, 5, 5), null, new Operation.Withdraw(100), Ok(new(2, 0, 0), 0, 5, 100), new(3, 5, 5) },
++        { 95, 0, new(5, 5, 5), null, new Operation.Withdraw(90), Ok(new(1, 2, 0), 0, 5, 90), new(4, 3, 5) },
+         { 115, 0, new(5, 5, 5), null, new Operation.Withdraw(110), Ok(new(2, 0, 1), 5, 0, 110), new(3, 5, 4) },
+         {
+             110, 0, new(5, 5, 5), null, new Operation.Withdraw(110),
+@@ -136,7 +136,7 @@
+         var notes = new NoteCounts(outFifties, outTwenties, outTens);
+         var session = new Session(stock, null, new(250, 0));
+ 
+-        session.Withdraw(amount, Ok(notes, amount > 100 ? 5 : 0, 250 - amount - (amount > 100 ? 5 : 0), amount), stock - notes);
++        session.Withdraw(amount, Ok(notes, amount >= 100 ? 5 : 0, 250 - amount - (amount >= 100 ? 5 : 0), amount), stock - notes);
+     }
+ 
+     [Fact]
+@@ -231,10 +231,10 @@
+     {
+         var session = new Session(Full, null, new(250, 0));
+ 
+-        session.Withdraw(100, Ok(new(2, 0, 0), 0, 150, 100), new(3, 5, 5));
+-        session.Withdraw(100, Ok(new(2, 0, 0), 0, 50, 200), new(1, 5, 5));
++        session.Withdraw(100, Ok(new(2, 0, 0), 5, 145, 100), new(3, 5, 5));
++        session.Withdraw(100, Ok(new(2, 0, 0), 5, 40, 200), new(1, 5, 5));
+         session.Refused(new Operation.Withdraw(10), AtmStatus.DailyLimitExceeded);
+-        session.Deposit(new(1, 0, 0), DepositOk(100, 200), new(2, 5, 5));
++        session.Deposit(new(1, 0, 0), DepositOk(90, 200), new(2, 5, 5));
+         session.Refused(new Operation.Withdraw(10), AtmStatus.DailyLimitExceeded);
+     }
+ 
+@@ -443,7 +443,7 @@
+             {
+                 if (amount <= 0 || amount % 10 != 0) return Refuse(AtmStatus.InvalidAmount);
+                 if (account.WithdrawnToday + amount > 200) return Refuse(AtmStatus.DailyLimitExceeded);
+-                var fee = amount > 100 ? 5 : 0;
++                var fee = amount >= 100 ? 5 : 0;
+                 if (amount + fee > account.Balance) return Refuse(AtmStatus.InsufficientFunds);
+ 
+                 int Available(Denomination d) => d == jammed ? 0 : stock.Of(d);
+--- a/Atm.Tests/MachineTests.cs
++++ b/Atm.Tests/MachineTests.cs
+@@ -113,7 +113,7 @@
+ 
+         if (amount <= 0 || amount % 10 != 0) return Refused(AtmStatus.InvalidAmount);
+         if (account.WithdrawnToday + amount > 200) return Refused(AtmStatus.DailyLimitExceeded);
+-        var fee = amount > 100 ? 5 : 0;
++        var fee = amount >= 100 ? 5 : 0;
+         if (amount + fee > account.Balance) return Refused(AtmStatus.InsufficientFunds);
+ 
+         var f = jammed == Denomination.Fifty ? 0 : stock.Fifties;
+--- a/Atm.Tests/Proprietes.cs
++++ b/Atm.Tests/Proprietes.cs
+@@ -93,7 +93,7 @@
+     /// <summary>Un compte qui passe le plafond et le solde pour <paramref name="montant"/>.</summary>
+     private static Gen<AccountState> ComptesAdmissibles(int montant) =>
+         from retire in Multiple(10, 0, 200 - montant)
+-        from solde in Multiple(5, montant + (montant > 100 ? 5 : 0), 250)
++        from solde in Multiple(5, montant + (montant >= 100 ? 5 : 0), 250)
+         select new AccountState(solde, retire);
+ 
+     /// <summary>Une combinaison disponible de 10 à 200 €, un stock qui la contient, et un compte admissible.</summary>
+@@ -140,7 +140,7 @@
+         (from montant in Multiple(10, 10, 200)
+          from retire in Multiple(10, 0, 200 - montant)
+          from ecart in Gen.Elements(-15, -10, -5, 0, 5, 10)
+-         let solde = Math.Clamp(montant + (montant > 100 ? 5 : 0) + ecart, 0, 250)
++         let solde = Math.Clamp(montant + (montant >= 100 ? 5 : 0) + ecart, 0, 250)
+          from stock in Billets(NoteCounts.None, Plein)
+          from bloquee in Bloquees
+          select new RetraitAuBordDuSolde(new Situation(new AccountState(solde, retire), stock, bloquee), montant)).ToArbitrary();
+@@ -198,7 +198,7 @@
+     private static AtmResult Retirer(Situation situation, int montant) =>
+         Executer(situation, new Operation.Withdraw(montant)).Resultat;
+ 
+-    private static int Frais(int montant) => montant > 100 ? 5 : 0;
++    private static int Frais(int montant) => montant >= 100 ? 5 : 0;
+ 
+     /// <summary>Les billets disponibles : le stock, sans la cassette bloquée.</summary>
+     private static NoteCounts Disponibles(Situation situation) => new(
+--- a/Atm.Tests/WithdrawTests.cs
++++ b/Atm.Tests/WithdrawTests.cs
+@@ -42,11 +42,11 @@
+     }
+ 
+     [Fact]
+-    public void Withdraw100_HasNoFee()
+-    {
+-        var (result, _) = Run(105, 0, Full, null, 100);
+-
+-        Assert.Equal(new AtmResult(AtmStatus.Ok, new(2, 0, 0), 0, new(5, 100)), result);
++    public void Withdraw90_HasNoFee()
++    {
++        var (result, _) = Run(95, 0, Full, null, 90);
++
++        Assert.Equal(new AtmResult(AtmStatus.Ok, new(1, 2, 0), 0, new(5, 90)), result);
+     }
+ 
+     [Fact]
+@@ -149,9 +149,9 @@
+     [Fact]
+     public void Funds_ExactBalanceWithoutFee_IsAllowed()
+     {
+-        var (result, _) = Run(100, 0, Full, null, 100);
+-
+-        Assert.Equal(new AtmResult(AtmStatus.Ok, new(2, 0, 0), 0, new(0, 100)), result);
++        var (result, _) = Run(90, 0, Full, null, 90);
++
++        Assert.Equal(new AtmResult(AtmStatus.Ok, new(1, 2, 0), 0, new(0, 90)), result);
+     }
+ 
+     [Fact]

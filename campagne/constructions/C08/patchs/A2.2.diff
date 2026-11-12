@@ -1,0 +1,19 @@
+# C08-A2.2
+# La règle visée, selon le saboteur : Le bug viole la règle n° 2 du retrait : la spec ne refuse avec `DailyLimitExceeded` que si `WithdrawnToday + amount` **dépasse** 200, alors que le code refuse aussi quand ce total vaut exactement 200 pour un retrait sans frais (par exemple solde 250, déjà retiré 150, retrait de 50).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -27,12 +27,12 @@
+             return Refuse(AtmStatus.InvalidAmount, account);
+         }
+ 
+-        if (account.WithdrawnToday + amount > DailyLimit)
++        var fee = amount > FeeThreshold ? WithdrawalFee : 0;
++        if (account.WithdrawnToday + amount >= DailyLimit + fee)
+         {
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+ 
+-        var fee = amount > FeeThreshold ? WithdrawalFee : 0;
+         if (amount + fee > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);

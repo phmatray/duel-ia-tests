@@ -1,0 +1,3 @@
+# C03-A4.1
+# La règle visée, selon le saboteur : Aucun bug introduit : je n'ai trouvé aucune modification honnête de `Atm/` (au plus 5 lignes) qui viole la spec avec le vrai `MoneyDispenser` sans être détectée par la suite actuelle, donc le code est laissé intact.
+# Aucun changement : le saboteur n'a rien rendu (tentative non conforme).

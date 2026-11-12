@@ -1,0 +1,13 @@
+# C01-A2.3
+# La règle visée, selon le saboteur : En cas de panne du module lors d'un retrait, `Notes` doit contenir tous les billets déjà sortis, alors que la machine ne renvoie que ceux du dernier passage réussi : c'est faux dès que la panne survient au 3ᵉ passage ou plus tard (retraits de 9 billets ou plus).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -49,7 +49,7 @@
+                 return new AtmResult(AtmStatus.DispenserFault, dispensed, 0, account);
+             }
+ 
+-            dispensed += pass;
++            dispensed = pass;
+         }
+ 
+         var after = new AccountState(account.Balance - amount - fee, account.WithdrawnToday + amount);

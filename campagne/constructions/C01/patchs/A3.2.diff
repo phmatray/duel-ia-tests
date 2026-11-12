@@ -1,0 +1,21 @@
+# C01-A3.2
+# La règle visée, selon le saboteur : La machine doit être sans mémoire entre deux appels et ne dépendre que du compte, de l'opération et du module : or elle fige le stock du module à sa construction, donc tout appel qui suit un retrait ou un dépôt sur la même machine calcule les billets disponibles à partir d'un stock périmé.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -7,6 +7,8 @@
+     public const int WithdrawalFee = 5;
+     public const int MaxNotesPerPass = 4;
+     public const int CassetteCapacity = 5;
++
++    private readonly NoteCounts stock = dispenser.Stock;
+ 
+     public AtmResult Execute(AccountState account, Operation operation) => operation switch
+     {
+@@ -86,7 +88,6 @@
+     /// <summary>Le stock utilisable : la cassette bloquée compte pour zéro, un compte négatif aussi.</summary>
+     private NoteCounts Available()
+     {
+-        var stock = dispenser.Stock;
+         var jammed = dispenser.Jammed;
+ 
+         return new NoteCounts(

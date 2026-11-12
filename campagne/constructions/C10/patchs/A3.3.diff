@@ -1,0 +1,13 @@
+# C10-A3.3
+# La règle visée, selon le saboteur : Les frais de retrait sont de 5 € si `amount` (le montant de l'opération seule) est strictement supérieur à 100 €, et de 0 € sinon.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -29,7 +29,7 @@
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+ 
+-        var fee = amount > FeeThreshold ? WithdrawalFee : 0;
++        var fee = account.WithdrawnToday + amount > FeeThreshold ? WithdrawalFee : 0;
+         if (amount + fee > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);

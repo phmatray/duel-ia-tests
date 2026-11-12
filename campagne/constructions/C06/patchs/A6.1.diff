@@ -1,0 +1,85 @@
+# C06-A6.1
+# La règle visée, selon le saboteur : Le bug viole la règle n° 3 du dépôt : un dépôt qui ferait dépasser 5 billets dans la cassette de 10 € doit être refusé avec le statut `CassetteFull` (aucun changement), alors que la machine rend `DispenserFault` (par exemple : stock 50×0 20×0 10×5, aucune cassette bloquée, dépôt 10×1).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -67,7 +67,7 @@
+         }
+ 
+         var after = dispenser.Stock + notes;
+-        if (after.Fifties > CassetteCapacity || after.Twenties > CassetteCapacity || after.Tens > CassetteCapacity)
++        if (after.Fifties > CassetteCapacity || after.Twenties > CassetteCapacity)
+         {
+             return Refuse(AtmStatus.CassetteFull, account);
+         }
+--- a/Atm.Tests/CashMachineTests.cs
++++ b/Atm.Tests/CashMachineTests.cs
+@@ -261,7 +261,7 @@
+     [Fact]
+     public void Deposit_full_in_one_cassette_refuses_whole_deposit()
+     {
+-        var stock = new NoteCounts(0, 0, 5);
++        var stock = new NoteCounts(5, 0, 0);
+         var result = Run(10, 0, stock, Denomination.Twenty, new Operation.Deposit(new(1, 0, 1)), out var spy);
+ 
+         AssertRefused(result, AtmStatus.CassetteFull, 10, 0, stock, spy);
+--- a/Atm.Tests/DomainSweepTests.cs
++++ b/Atm.Tests/DomainSweepTests.cs
+@@ -92,7 +92,8 @@
+             AtmStatus status =
+                 notes.Total == 0 ? AtmStatus.InvalidAmount
+                 : jammed is { } j && notes.Of(j) > 0 ? AtmStatus.CassetteJammed
+-                : after.Fifties > 5 || after.Twenties > 5 || after.Tens > 5 ? AtmStatus.CassetteFull
++                : after.Fifties > 5 || after.Twenties > 5 ? AtmStatus.CassetteFull
++                : after.Tens > 5 ? AtmStatus.DispenserFault
+                 : AtmStatus.Ok;
+ 
+             var ok = status == AtmStatus.Ok;
+--- a/Atm.Tests/Integration.cs
++++ b/Atm.Tests/Integration.cs
+@@ -80,7 +80,8 @@
+         if (notes.Total == 0) return Refused(AtmStatus.InvalidAmount, account);
+         if (jammed is { } j && notes.Of(j) > 0) return Refused(AtmStatus.CassetteJammed, account);
+         var after = stock + notes;
+-        if (after.Fifties > 5 || after.Twenties > 5 || after.Tens > 5) return Refused(AtmStatus.CassetteFull, account);
++        if (after.Fifties > 5 || after.Twenties > 5) return Refused(AtmStatus.CassetteFull, account);
++        if (after.Tens > 5) return Refused(AtmStatus.DispenserFault, account);
+ 
+         return new AtmResult(AtmStatus.Ok, NoteCounts.None, 0, account with { Balance = account.Balance + notes.Value });
+     }
+@@ -108,7 +109,6 @@
+         var actual = machine.Execute(account, op);
+ 
+         Assert.Equal(expected, actual);
+-        Assert.NotEqual(AtmStatus.DispenserFault, actual.Status);
+         Assert.Equal(ExpectedStock(before, op, expected), dispenser.Stock);
+         Assert.Equal(jammed, dispenser.Jammed);
+ 
+--- a/Atm.Tests/Proprietes.cs
++++ b/Atm.Tests/Proprietes.cs
+@@ -504,7 +504,8 @@
+         var attendu =
+             billets.Total == 0 ? AtmStatus.InvalidAmount
+             : bloquee.Valeur is { } b && billets.Of(b) > 0 ? AtmStatus.CassetteJammed
+-            : !TientDans(stock.Valeur + billets) ? AtmStatus.CassetteFull
++            : (stock.Valeur + billets) is { Fifties: > 5 } or { Twenties: > 5 } ? AtmStatus.CassetteFull
++            : !TientDans(stock.Valeur + billets) ? AtmStatus.DispenserFault
+             : AtmStatus.Ok;
+ 
+         var (resultat, _) = Deposer(compte.Valeur, stock.Valeur, bloquee.Valeur, billets);
+@@ -519,7 +520,7 @@
+     {
+         var (resultat, module) = Deposer(compte.Valeur, stock.Valeur, bloquee.Valeur, depot.Valeur);
+ 
+-        if (resultat.Status != AtmStatus.Ok)
++        if (resultat.Status is not (AtmStatus.Ok or AtmStatus.DispenserFault))
+         {
+             AssertRefusSansEffet(resultat, compte.Valeur, stock.Valeur, module);
+         }
+@@ -640,7 +641,6 @@
+             }
+ 
+             var resultat = machine.Execute(etat, operation);
+-            Assert.NotEqual(AtmStatus.DispenserFault, resultat.Status);
+             if (resultat.Status == AtmStatus.Ok)
+             {
+                 if (operation is Operation.Deposit d)

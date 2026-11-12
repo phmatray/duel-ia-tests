@@ -1,0 +1,13 @@
+# C08-A5.2
+# La règle visée, selon le saboteur : Règle 3 du dépôt : un dépôt qui ferait dépasser 5 billets dans une cassette doit donner `CassetteFull`, or la cassette de 10 € n'est plus contrôlée, donc un billet de 10 déposé sur une cassette qui en contient déjà 5 (sans débordement à 50 ni à 20) donne `DispenserFault`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -72,7 +72,7 @@
+         }
+ 
+         var after = dispenser.Stock + notes;
+-        if (after.Fifties > CassetteCapacity || after.Twenties > CassetteCapacity || after.Tens > CassetteCapacity)
++        if (after.Fifties > CassetteCapacity || after.Twenties > CassetteCapacity)
+         {
+             return Refuse(AtmStatus.CassetteFull, account);
+         }

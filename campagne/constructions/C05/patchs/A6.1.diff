@@ -1,0 +1,102 @@
+# C05-A6.1
+# La règle visée, selon le saboteur : Le bug viole la règle « Les frais : […] Ils ne comptent pas dans le plafond du jour » : le contrôle n° 2 ajoute les frais au montant, si bien qu'un retrait de plus de 100 € qui amène `WithdrawnToday + amount` à 200 exactement (par exemple solde 250, déjà retiré 0, stock 50×4, retrait 200, attendu `Ok`) est refusé à tort en `DailyLimitExceeded`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -25,7 +25,7 @@
+             return Refuse(AtmStatus.InvalidAmount, account);
+         }
+ 
+-        if (account.WithdrawnToday + amount > DailyLimit)
++        if (account.WithdrawnToday + amount + FeeFor(amount) > DailyLimit)
+         {
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+--- a/Atm.Tests/CashMachineTests.cs
++++ b/Atm.Tests/CashMachineTests.cs
+@@ -130,11 +130,11 @@
+     [Fact]
+     public void Fee_does_not_count_toward_daily_limit()
+     {
+-        var (result, _) = Run(250, 0, new NoteCounts(4, 0, 0), null, new Operation.Withdraw(200));
++        var (result, _) = Run(250, 0, new NoteCounts(4, 0, 0), null, new Operation.Withdraw(150));
+ 
+         Assert.Equal(AtmStatus.Ok, result.Status);
+         Assert.Equal(5, result.Fee);
+-        Assert.Equal(new AccountState(45, 200), result.Account);
++        Assert.Equal(new AccountState(95, 150), result.Account);
+     }
+ 
+     [Fact]
+@@ -197,9 +197,9 @@
+     [Fact]
+     public void Fewest_notes_prefers_fifties_when_available()
+     {
+-        var (result, _) = Run(250, 0, new NoteCounts(5, 5, 5), null, new Operation.Withdraw(200));
+-
+-        Assert.Equal(new NoteCounts(4, 0, 0), result.Notes);
++        var (result, _) = Run(250, 0, new NoteCounts(5, 5, 5), null, new Operation.Withdraw(150));
++
++        Assert.Equal(new NoteCounts(3, 0, 0), result.Notes);
+     }
+ 
+     // ---------- Sortie en passages ----------
+--- a/Atm.Tests/DomainSweepTests.cs
++++ b/Atm.Tests/DomainSweepTests.cs
+@@ -18,8 +18,8 @@
+         AtmResult Refused(AtmStatus s) => new(s, NoteCounts.None, 0, a);
+ 
+         if (amount <= 0 || amount % 10 != 0) return Refused(AtmStatus.InvalidAmount);
+-        if (a.WithdrawnToday + amount > 200) return Refused(AtmStatus.DailyLimitExceeded);
+         var fee = amount > 100 ? 5 : 0;
++        if (a.WithdrawnToday + amount + fee > 200) return Refused(AtmStatus.DailyLimitExceeded);
+         if (amount + fee > a.Balance) return Refused(AtmStatus.InsufficientFunds);
+ 
+         var usable = new NoteCounts(
+--- a/Atm.Tests/Integration.cs
++++ b/Atm.Tests/Integration.cs
+@@ -68,8 +68,8 @@
+         AtmResult Refused(AtmStatus s) => new(s, NoteCounts.None, 0, a);
+ 
+         if (amount <= 0 || amount % 10 != 0) return Refused(AtmStatus.InvalidAmount);
+-        if (a.WithdrawnToday + amount > 200) return Refused(AtmStatus.DailyLimitExceeded);
+         var fee = amount > 100 ? 5 : 0;
++        if (a.WithdrawnToday + amount + fee > 200) return Refused(AtmStatus.DailyLimitExceeded);
+         if (amount + fee > a.Balance) return Refused(AtmStatus.InsufficientFunds);
+         if (combination is not { } notes) return Refused(AtmStatus.CannotDispense);
+ 
+@@ -249,11 +249,11 @@
+ 
+     [Theory]
+     // stock 50/20/10, montant, billets attendus 50/20/10
+-    [InlineData(1, 5, 5, 200, 1, 5, 5)]   // 11 billets : au moins trois passages
++    [InlineData(1, 5, 5, 190, 1, 5, 4)]   // 10 billets : au moins trois passages
+     [InlineData(0, 5, 5, 150, 0, 5, 5)]   // 10 billets
+     [InlineData(0, 5, 0, 100, 0, 5, 0)]   // 5 billets d'une seule coupure
+     [InlineData(0, 0, 5, 50, 0, 0, 5)]
+-    [InlineData(4, 0, 0, 200, 4, 0, 0)]   // exactement 4 billets : un seul passage plein
++    [InlineData(3, 1, 0, 170, 3, 1, 0)]   // exactement 4 billets : un seul passage plein
+     [InlineData(3, 2, 0, 190, 3, 2, 0)]
+     public void Large_withdrawals_go_through_the_real_dispenser(int f, int t, int c, int amount, int ef, int et, int ec)
+     {
+--- a/Atm.Tests/Proprietes.cs
++++ b/Atm.Tests/Proprietes.cs
+@@ -89,8 +89,8 @@
+             select new Retrait(new AccountState(Math.Clamp(amount + Fee(amount) + 5 * step, 0, 250), withdrawn), amount)));
+ 
+         public static Arbitrary<RetraitAutorise> RetraitsAutorises() => Arb.From(
+-            from amount in Gen.Choose(1, 20).Select(i => i * 10)
+-            from withdrawn in Gen.Choose(0, (200 - amount) / 10).Select(i => i * 10)
++            from amount in Gen.Choose(1, 19).Select(i => i * 10)
++            from withdrawn in Gen.Choose(0, (200 - amount - Fee(amount)) / 10).Select(i => i * 10)
+             from balance in Gen.Choose((amount + Fee(amount)) / 5, 50).Select(i => i * 5)
+             select new RetraitAutorise(new AccountState(balance, withdrawn), amount));
+ 
+@@ -158,7 +158,7 @@
+ 
+         var expected =
+             amount <= 0 || amount % 10 != 0 ? AtmStatus.InvalidAmount
+-            : account.WithdrawnToday + amount > 200 ? AtmStatus.DailyLimitExceeded
++            : account.WithdrawnToday + amount + Fee(amount) > 200 ? AtmStatus.DailyLimitExceeded
+             : amount + Fee(amount) > account.Balance ? AtmStatus.InsufficientFunds
+             : Combinations(amount, Usable(module)).Count == 0 ? AtmStatus.CannotDispense
+             : AtmStatus.Ok;

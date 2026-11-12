@@ -1,0 +1,12 @@
+# C10-A5.2
+# La règle visée, selon le saboteur : Le bug viole la règle « 4 billets au plus par passage » (section « La sortie ») : la place prise par les billets de 20 n'est plus déduite lors du découpage, donc un retrait qui mêle des billets de 20 et de 10 avec au moins 4 billets de 50 et de 20 (par ex. 180 € avec un stock plein) donne un passage de plus de 4 billets, que le vrai `MoneyDispenser` refuse, d'où `DispenserFault` au lieu de `Ok`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -134,7 +134,6 @@
+             var fifties = Math.Min(room, remaining.Fifties);
+             room -= fifties;
+             var twenties = Math.Min(room, remaining.Twenties);
+-            room -= twenties;
+             var tens = Math.Min(room, remaining.Tens);
+ 
+             var pass = new NoteCounts(fifties, twenties, tens);

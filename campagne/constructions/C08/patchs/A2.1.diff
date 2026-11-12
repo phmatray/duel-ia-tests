@@ -1,0 +1,13 @@
+# C08-A2.1
+# La règle visée, selon le saboteur : Les frais doivent être de 5 € seulement si `amount` est strictement supérieur à 100 € (0 € sinon), mais le code les prélève aussi quand `WithdrawnToday` dépasse 100 €, même pour un retrait de 100 € ou moins.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -32,7 +32,7 @@
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+ 
+-        var fee = amount > FeeThreshold ? WithdrawalFee : 0;
++        var fee = amount > FeeThreshold || account.WithdrawnToday > FeeThreshold ? WithdrawalFee : 0;
+         if (amount + fee > account.Balance)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);

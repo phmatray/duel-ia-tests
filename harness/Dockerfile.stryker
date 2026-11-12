@@ -1,0 +1,6 @@
+# Le gardien Δ2 : la couverture et Stryker.NET.
+FROM banc-006-couverture:2.1.318
+USER root
+RUN HOME=/root dotnet tool install --tool-path /opt/outils dotnet-stryker --version 5.0.0
+RUN rm -rf /home/agent/.nuget /home/agent/.dotnet
+USER agent

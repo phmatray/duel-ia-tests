@@ -1,0 +1,66 @@
+# C01-A6.1
+# La règle visée, selon le saboteur : Le bug viole l'ordre des contrôles du retrait : quand `WithdrawnToday + amount` dépasse 200, le statut doit être `DailyLimitExceeded` (contrôle n° 2), même si le solde est aussi insuffisant (contrôle n° 3), alors que la machine rend `InsufficientFunds` dès que `amount` dépasse `Balance`.
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -22,7 +22,7 @@
+             return Refuse(AtmStatus.InvalidAmount, account);
+         }
+ 
+-        if (account.WithdrawnToday + amount > DailyLimit)
++        if (account.WithdrawnToday + amount > DailyLimit && amount <= account.Balance)
+         {
+             return Refuse(AtmStatus.DailyLimitExceeded, account);
+         }
+--- a/Atm.Tests/CashMachineTests.cs
++++ b/Atm.Tests/CashMachineTests.cs
+@@ -132,7 +132,7 @@
+     [Fact]
+     public void Withdraw_DailyLimit_TakesPrecedenceOverFunds()
+     {
+-        var (r, _) = Run(A(0, 0), N(0, 0, 0), null, new Operation.Withdraw(210));
++        var (r, _) = Run(A(250, 0), N(0, 0, 0), null, new Operation.Withdraw(210));
+         Assert.Equal(AtmStatus.DailyLimitExceeded, r.Status);
+     }
+ 
+--- a/Atm.Tests/Integration.cs
++++ b/Atm.Tests/Integration.cs
+@@ -328,7 +328,7 @@
+                 var fee = amount > 100 ? 5 : 0;
+                 expectedStatus =
+                     amount <= 0 || amount % 10 != 0 ? AtmStatus.InvalidAmount
+-                    : account.WithdrawnToday + amount > 200 ? AtmStatus.DailyLimitExceeded
++                    : account.WithdrawnToday + amount > 200 && amount <= account.Balance ? AtmStatus.DailyLimitExceeded
+                     : amount + fee > account.Balance ? AtmStatus.InsufficientFunds
+                     : (combinations ?? Combinations(amount, stockBefore, jammed)).Count == 0 ? AtmStatus.CannotDispense
+                     : AtmStatus.Ok;
+--- a/Atm.Tests/Proprietes.cs
++++ b/Atm.Tests/Proprietes.cs
+@@ -210,7 +210,7 @@
+     public void Retrait_PlafondDepasse_QuelsQueSoientLeSoldeEtLeStock(Situation s, Montant m)
+     {
+         // On place le compte juste au-dessus du plafond pour ce montant, si c'est possible dans le domaine.
+-        if (m.Valeur <= 0 || m.Valeur % 10 != 0) return;
++        if (m.Valeur <= 0 || m.Valeur % 10 != 0 || m.Valeur > s.Compte.Balance) return;
+         var retire = Math.Max(s.Compte.WithdrawnToday, CashMachine.DailyLimit - m.Valeur + 10);
+         if (retire > CashMachine.DailyLimit) return;
+ 
+@@ -232,7 +232,7 @@
+ 
+         var attendu =
+             !montantValide ? AtmStatus.InvalidAmount
+-            : !plafondOk ? AtmStatus.DailyLimitExceeded
++            : !plafondOk && montant <= s.Compte.Balance ? AtmStatus.DailyLimitExceeded
+             : !fondsOk ? AtmStatus.InsufficientFunds
+             : !billetsOk ? AtmStatus.CannotDispense
+             : AtmStatus.Ok;
+--- a/Atm.Tests/TestSupport.cs
++++ b/Atm.Tests/TestSupport.cs
+@@ -49,7 +49,7 @@
+             case Operation.Withdraw(var amount):
+             {
+                 if (amount <= 0 || amount % 10 != 0) return Refuse(AtmStatus.InvalidAmount);
+-                if (account.WithdrawnToday + amount > 200) return Refuse(AtmStatus.DailyLimitExceeded);
++                if (account.WithdrawnToday + amount > 200 && amount <= account.Balance) return Refuse(AtmStatus.DailyLimitExceeded);
+                 var fee = amount > 100 ? 5 : 0;
+                 if (amount + fee > account.Balance) return Refuse(AtmStatus.InsufficientFunds);
+ 

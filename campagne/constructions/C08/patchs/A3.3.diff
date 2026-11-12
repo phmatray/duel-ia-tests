@@ -1,0 +1,13 @@
+# C08-A3.3
+# La règle visée, selon le saboteur : Contrôle n°3 du retrait : le retrait doit être refusé avec `InsufficientFunds` dès que `amount + frais` dépasse `Balance` (ici le solde est arrondi à la dizaine supérieure avant la comparaison, donc avec un solde de 15 € un retrait de 20 € passe et le solde devient négatif).
+--- a/Atm/CashMachine.cs
++++ b/Atm/CashMachine.cs
+@@ -33,7 +33,7 @@
+         }
+ 
+         var fee = amount > FeeThreshold ? WithdrawalFee : 0;
+-        if (amount + fee > account.Balance)
++        if (amount + fee > (account.Balance + 5) / 10 * 10)
+         {
+             return Refuse(AtmStatus.InsufficientFunds, account);
+         }
